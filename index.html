@@ -28,7 +28,7 @@ body{margin:0;background:var(--ui-bg);color:var(--ui-text);font-family:Poppins,s
 fieldset{border:1px solid var(--ui-line);border-radius:12px;padding:10px 12px 12px;margin:0 0 12px}
 legend{font:700 13px Montserrat;padding:0 6px;color:var(--red2);text-transform:uppercase;letter-spacing:.5px}
 label{display:block;font-size:12px;color:var(--ui-muted);margin:8px 0 3px}
-input[type=text],input[type=number],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--ui-line);border-radius:8px;background:transparent;color:var(--ui-text);font:inherit;font-size:14px}
+input[type=text],input[type=number],input[type=password],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--ui-line);border-radius:8px;background:transparent;color:var(--ui-text);font:inherit;font-size:14px}
 textarea{resize:vertical;min-height:54px}
 input[type=range]{width:100%}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -39,6 +39,10 @@ button.small{padding:5px 9px;font-size:12px}
 .spec-row{display:grid;grid-template-columns:96px 1fr 28px;gap:6px;align-items:start;border-top:1px dashed var(--ui-line);padding-top:8px;margin-top:8px}
 .spec-row .f{display:grid;gap:4px}
 .spec-row input,.spec-row select{padding:6px 8px;font-size:13px}
+.ai-status{font-size:13px;margin-top:8px;min-height:18px}
+.ai-status.work{color:#b7791f}.ai-status.ok{color:#2f855a}.ai-status.err{color:#c53030}
+fieldset.ai{border-color:var(--red2);border-width:2px}
+button:disabled{opacity:.5;cursor:wait}
 .hint{font-size:11px;color:var(--ui-muted);margin-top:4px}
 .stage{display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:hidden}
 #scaler{transform-origin:top left}
@@ -189,7 +193,43 @@ body.print .panel{display:none} body.print .app{display:block} body.print .stage
 <div class="app">
   <aside class="panel">
     <h1>Créateur d'affiches Zstore</h1>
-    <p class="sub">Remplis les champs, ajoute la photo et l'image du produit, puis télécharge l'affiche en PNG.</p>
+    <p class="sub">Tape la marque, le modèle et le prix : l'IA trouve les caractéristiques et crée le mannequin. Tout reste modifiable, puis télécharge l'affiche en PNG.</p>
+
+    <fieldset class="ai">
+      <legend>⚡ Génération automatique</legend>
+      <div class="row">
+        <div><label>Marque</label><input type="text" id="aiBrand" placeholder="ex. Samsung"></div>
+        <div><label>Modèle</label><input type="text" id="aiModel" placeholder="ex. Galaxy A17"></div>
+      </div>
+      <div class="row">
+        <div><label>Prix (FCFA)</label><input type="text" id="aiPrice" placeholder="ex. 100000"></div>
+        <div><label>Stockage (facultatif)</label><input type="text" id="aiStorage" placeholder="ex. 128+4"></div>
+      </div>
+      <button class="primary ai-btn" id="aiAll" style="margin-top:12px">✨ Créer l'affiche automatiquement</button>
+      <div class="ai-status" id="aiStatus"></div>
+      <div class="btns" style="margin-top:8px">
+        <button class="small ai-btn" id="aiNewModel">👩🏾 Autre mannequin</button>
+        <button class="small ai-btn" id="aiSpecs">🔎 Caractéristiques seulement</button>
+        <button class="small ai-btn" id="aiStrip">📱 Refaire les coloris</button>
+      </div>
+      <label>Description du mannequin (tirée au hasard, modifiable)</label>
+      <textarea id="aiPersona" placeholder="Laisse vide : un mannequin différent est tiré au hasard à chaque création."></textarea>
+      <div class="btns" style="margin-top:6px">
+        <button class="small" id="aiDice">🎲 Tirer une autre description</button>
+        <button class="small ai-btn" id="aiRedo">↻ Refaire la photo avec cette description</button>
+      </div>
+      <details style="margin-top:10px">
+        <summary style="cursor:pointer;font-size:13px;font-weight:600">⚙ Réglages IA (clé Gemini)</summary>
+        <label>Clé API Google Gemini (créée sur aistudio.google.com)</label>
+        <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off">
+        <div class="btns" style="margin-top:6px"><button class="small ai-btn" id="aiCheck">Vérifier la clé et choisir les modèles</button></div>
+        <div class="row">
+          <div><label>Modèle texte</label><select id="textModel"></select></div>
+          <div><label>Modèle image</label><select id="imageModel"></select></div>
+        </div>
+        <div class="hint">La clé reste enregistrée uniquement dans ce navigateur.</div>
+      </details>
+    </fieldset>
 
     <fieldset>
       <legend>Démarrer</legend>
@@ -214,9 +254,9 @@ body.print .panel{display:none} body.print .app{display:block} body.print .stage
         <div><label>Décalage horizontal</label><input type="range" id="px" min="-600" max="600" value="0"></div>
         <div><label>Décalage vertical</label><input type="range" id="py" min="-800" max="800" value="0"></div>
       </div>
-      <label>Image du produit (PNG détouré de préférence)</label>
+      <label>Photo du produit (facultatif : sert de modèle à l'IA pour un téléphone plus fidèle)</label>
       <input type="file" id="product" accept="image/*">
-      <div class="hint">Modèle A : la rangée de coloris en bas à droite. Modèle B : le téléphone au centre.</div>
+      <div class="hint">Sans photo générée par l'IA, elle s'affiche aussi sur l'affiche (coloris pour le modèle A, téléphone au centre pour le modèle B).</div>
     </fieldset>
 
     <fieldset>
@@ -369,7 +409,7 @@ const PRESETS = {
 const $ = id => document.getElementById(id);
 const FIELDS = ['variant','hook','brand','brandColor','model','storage','price','slogan','ribbon1','ribbon2','contact','siege','annexes','services','fbName','fbSlogan'];
 let state = {};
-let photoURL = null, productURL = null;
+let photoURL = null, productURL = null, stripURL = null, aiPhoto = false;
 
 function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function rich(s){return esc(s).replace(/\*(.+?)\*/g,'<em>$1</em>')}
@@ -414,7 +454,8 @@ function render(){
   $('pFbName').textContent = s.fbName; fitText($('pFbName'), 0, 46);
   $('pFbSlogan').textContent = s.fbSlogan; fitText($('pFbSlogan'),0,18);
   // Images
-  $('pProd').innerHTML = productURL ? `<img src="${productURL}" alt="">` : '';
+  const prodSrc = s.variant === 'a' ? (stripURL || productURL) : (aiPhoto ? null : productURL);
+  $('pProd').innerHTML = prodSrc ? `<img src="${prodSrc}" alt="">` : '';
   const img = $('phImg');
   if (photoURL){
     img.style.display=''; $('phEmpty').style.display='none';
@@ -467,7 +508,7 @@ Object.keys(PRESETS).forEach(n=>{
 });
 
 function readFile(input, cb){ input.addEventListener('change', ()=>{ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>cb(r.result); r.readAsDataURL(f); }); }
-readFile($('photo'), url=>{ photoURL=url; render(); });
+readFile($('photo'), url=>{ photoURL=url; aiPhoto=false; render(); });
 readFile($('product'), url=>{ productURL=url; render(); });
 
 /* ---------- Sauvegarde locale ---------- */
@@ -506,6 +547,266 @@ const saved = restore();
 if (saved){ state = saved; fillForm(); render(); } else loadPreset('Galaxy A17');
 scale();
 document.fonts.ready.then(render);
+</script>
+<script>
+/* =====================================================================
+   Génération automatique avec Google Gemini
+   - recherche de la fiche technique (Google Search intégré)
+   - photo du mannequin (aléatoire) tenant le produit
+   - rangée de coloris (modèle A)
+   ===================================================================== */
+const LS = {
+  get(k, d=''){ try{ const v = localStorage.getItem(k); return v===null ? d : v; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+};
+const GEM = {
+  base: 'https://generativelanguage.googleapis.com/v1beta',
+  key(){ return $('apiKey').value.trim(); },
+  textModel(){ return $('textModel').value || 'gemini-2.5-flash'; },
+  imageModel(){ return $('imageModel').value || 'gemini-2.5-flash-image'; },
+  async call(model, body){
+    if (!this.key()) throw new Error("Ajoute d'abord ta clé Gemini dans « Réglages IA ».");
+    const r = await fetch(`${this.base}/models/${encodeURIComponent(model)}:generateContent`, {
+      method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':this.key()}, body:JSON.stringify(body)
+    });
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || ('Erreur HTTP ' + r.status));
+    return j;
+  },
+  async listModels(){
+    const r = await fetch(`${this.base}/models?pageSize=1000`, {headers:{'x-goog-api-key':this.key()}});
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || ('Erreur HTTP ' + r.status));
+    return (j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace(/^models\//,''));
+  }
+};
+function versionOf(n){ const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; }
+function rankModels(list, isImage){
+  const ok = list.filter(n => n.startsWith('gemini') && (isImage
+      ? /image/.test(n)
+      : /flash/.test(n) && !/image|tts|audio|live|embedding|lite|robotics|computer/.test(n)));
+  return ok.sort((a,b)=> (versionOf(b)-versionOf(a)) || (/preview|exp/.test(a)-/preview|exp/.test(b)) || ((/flash/.test(b))-(/flash/.test(a))));
+}
+function fillModelSelect(sel, names, saved){
+  sel.innerHTML = names.map(n=>`<option ${n===saved?'selected':''}>${esc(n)}</option>`).join('');
+}
+
+/* ---------- Statut ---------- */
+function status(msg, kind){
+  const el = $('aiStatus'); el.textContent = msg || ''; el.className = 'ai-status ' + (kind||'');
+}
+function busy(on){ document.querySelectorAll('.ai-btn').forEach(b=>b.disabled = on); }
+
+/* ---------- 1. Fiche technique ---------- */
+function parseJSON(txt){
+  const s = txt.indexOf('{'), e = txt.lastIndexOf('}');
+  if (s < 0 || e < 0) throw new Error("La réponse de l'IA n'est pas exploitable, réessaie.");
+  return JSON.parse(txt.slice(s, e+1));
+}
+async function fetchSpecs(){
+  const brand = $('aiBrand').value.trim(), model = $('aiModel').value.trim(), storage = $('aiStorage').value.trim();
+  if (!brand || !model) throw new Error('Indique au moins la marque et le modèle.');
+  const prompt = `Tu es l'assistant marketing de Zeynab Store, boutique de téléphones et tablettes à Abidjan (Côte d'Ivoire).
+Recherche sur Internet la fiche technique officielle de : "${brand} ${model}"${storage ? ` (version ${storage})` : ''}.
+Réponds UNIQUEMENT avec un objet JSON valide (pas de texte autour, pas de balises), exactement de cette forme :
+{
+ "brand": "nom de la marque écrit comme sur son logo officiel (ex. SAMSUNG, Blackview, HONOR, TECNO, Xiaomi)",
+ "model": "nom commercial du modèle (ex. Galaxy A17, Fort 1, Pad X7)",
+ "type": "smartphone" ou "tablette",
+ "storage": "stockage+RAM au format (128+4 Go)${storage ? ` — utilise ${storage}` : ''}",
+ "brandColor": "couleur principale du logo de la marque en hexadécimal (ex. #1428a0)",
+ "brandSlogan": "slogan officiel de la marque, en anglais",
+ "specs": [ exactement 5 objets {"icon": ..., "title": ..., "value": ..., "subtitle": ...} dans cet ordre :
+    1. écran : icon "ecran" (ou "tablette" pour une tablette), title "Écran", value ex. "6.7\\" FHD+", subtitle court ex. "Grand écran immersif"
+    2. mémoire : icon "memoire", title "Mémoire", value ex. "128 Go + 4 Go RAM", subtitle "Plus d'espace, plus de fluidité"
+    3. batterie : icon "batterie", title "Batterie", value ex. "5000 mAh", subtitle "Autonomie longue durée"
+    4. le meilleur atout : caméra (icon "camera", title "Caméra", value "50 MP", subtitle "Des photos plus nettes") ou, pour un téléphone robuste, résistance (icon "resistance", title "Résistance", value "IP68 & IP69K", subtitle "Chocs, eau, poussière")
+    5. système : icon "android", title "Android 15" (la version réelle), value "", subtitle "Performances optimisées" ],
+ "camera": "résolution de la caméra principale, ex. 50 MP",
+ "hook": "accroche de 2 lignes séparées par \\n, avec 1 ou 2 mots forts entre *étoiles* (ex. Un smartphone\\n*puissant* et *élégant* !)",
+ "slogan": "slogan publicitaire manuscrit, 2 lignes courtes séparées par \\n (ex. Plus qu'un téléphone,\\nune expérience !)",
+ "qualities": "3 qualités d'un mot séparées par ' • ' (ex. Élégant • Performant • Fiable)",
+ "colors": ["coloris officiels en anglais, 3 ou 4 maximum"],
+ "design": "description physique précise EN ANGLAIS pour un illustrateur : forme, bords, module photo arrière (nombre, taille et disposition des capteurs, flash), finition, encoche ou poinçon de l'écran, épaisseur"
+}
+Textes en français (sauf design, colors, brandSlogan). Unités : Go, mAh, MP.`;
+  const body = { contents:[{role:'user', parts:[{text:prompt}]}], tools:[{google_search:{}}] };
+  let j;
+  try { j = await GEM.call(GEM.textModel(), body); }
+  catch(e){ // certains modèles n'acceptent pas l'outil de recherche : on réessaie sans
+    if (/search|tool/i.test(e.message)) { delete body.tools; j = await GEM.call(GEM.textModel(), body); } else throw e;
+  }
+  const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+  const txt = parts.map(p=>p.text||'').join('');
+  return parseJSON(txt);
+}
+function applySpecs(d){
+  const price = $('aiPrice').value.trim();
+  const v = state.variant;
+  state.brand = d.brand || $('aiBrand').value.trim();
+  const model = d.model || $('aiModel').value.trim();
+  if (v === 'b'){ // dernier mot en rouge
+    const w = model.split(' '); const last = w.pop();
+    state.model = (w.length ? w.join(' ').toUpperCase() + ' ' : '') + '*' + last.toUpperCase() + '*';
+  } else state.model = model;
+  state.storage = $('aiStorage').value.trim() ? normStorage($('aiStorage').value.trim()) : (d.storage || '');
+  if (price) state.price = formatPrice(price);
+  state.brandColor = d.brandColor || state.brandColor;
+  state.hook = d.hook || state.hook;
+  state.slogan = d.slogan || '';
+  state.ribbon1 = (state.brand + ' ' + model).toUpperCase();
+  state.ribbon2 = d.qualities || state.ribbon2;
+  state.fbName = state.brand;
+  state.fbSlogan = d.brandSlogan || '';
+  const specs = (d.specs||[]).map(s=>[s.icon in ICONS ? s.icon : 'ecran', s.title||'', s.value||'', s.subtitle||'']);
+  if (v === 'b'){
+    const find = ic => specs.find(s=>s[0]===ic);
+    const out = [];
+    out.push(['camera','Caméra', d.camera || (find('camera')||[])[2] || '', '']);
+    const ec = find('ecran') || find('tablette'); if (ec) out.push([ec[0], 'Écran', ec[2], '']);
+    const mem = find('memoire'); if (mem){ const ram = (mem[2].match(/(\d+)\s*Go\s*RAM/i)||[])[1]; out.push(['ram', ram ? ram + ' Go RAM' : mem[2], '', '']); }
+    const bat = find('batterie'); if (bat) out.push(['batterie', bat[2], '', '']);
+    state.specs = out.filter(s=>s[1]||s[2]);
+  } else state.specs = specs;
+  state.product = { brand: state.brand, model, type: d.type || 'smartphone', colors: d.colors || [], design: d.design || '' };
+  fillForm(); render();
+}
+function normStorage(s){ s = s.replace(/^\(|\)$/g,''); if (!/go/i.test(s)) s += ' Go'; return '(' + s + ')'; }
+function formatPrice(p){ const n = p.replace(/[^\d]/g,''); return n ? n.replace(/\B(?=(\d{3})+(?!\d))/g,'.') : p; }
+
+/* ---------- 2. Mannequin aléatoire ---------- */
+const TRAITS = {
+  skin: ['deep ebony dark skin','rich dark brown skin','warm medium-brown skin','caramel skin','light honey-brown skin','fair skin due to albinism, light eyebrows and lashes (African woman with albinism)'],
+  hair: ['long dark loose-wave lace-front wig','waist-length honey-blonde box braids in a high ponytail','voluminous natural afro','short copper-red curly bob','high curly bun with loose ringlets framing the face','sleek straight black bob','cornrows flowing into long curly braids','long platinum-blonde braids with sunglasses on top of the head','long straight burgundy hair with a middle part','defined twist-out natural hair','long jet-black body-wave hair with side part','ginger spiral curls in a half-up style'],
+  face: ['oval face with high cheekbones','round face with soft dimples','heart-shaped face and full lips','almond-shaped eyes and soft features','defined jawline and wide bright eyes','small nose and generous smile'],
+  body: ['slim build','athletic build','curvy build','full-figured plus-size build','petite build','tall slender build'],
+  outfit: ['burgundy satin slip dress with thin straps','tailored wine-red blazer suit','off-the-shoulder deep red satin top with a large bow','burgundy satin bustier dress with a rhinestone buckle','crimson wrap dress','bordeaux velvet evening dress','ruby silk blouse with high-waisted trousers','fuchsia-red satin one-shoulder dress'],
+  jewelry: ['large gold hoop earrings and a delicate gold necklace','pearl drop earrings and a small gold pendant','gold watch and gold chain bracelet','statement gold earrings and a diamond bracelet','flower-shaped diamond earrings and a rose-gold watch','gold butterfly necklace and stacked gold bangles'],
+  makeup: ['glossy nude lips and long lashes','bold red glossy lips and winged eyeliner','soft glam makeup with golden highlight','berry lips and smoky eyes'],
+  expression: ['confident soft smile','big joyful smile showing teeth','playful smile with a raised eyebrow','elegant subtle smile looking straight at the camera','warm radiant laugh'],
+  pose: ['seated on a burgundy velvet sofa, body slightly turned','standing at a three-quarter angle','seated with legs crossed, leaning slightly forward','relaxed reclining on a sofa cushion, upper body upright']
+};
+const pick = a => a[Math.floor(Math.random()*a.length)];
+function randomPersona(){
+  const t = TRAITS;
+  return [pick(t.skin), pick(t.hair), pick(t.face), pick(t.body), 'wearing a ' + pick(t.outfit), pick(t.jewelry), pick(t.makeup), pick(t.expression), pick(t.pose)].join(', ');
+}
+function photoPrompt(){
+  const p = state.product || {brand:state.brand, model:(state.model||'').replace(/\*/g,''), type:'smartphone', design:'', colors:[]};
+  const isTab = /tablet/i.test(p.type) || /tablette/i.test(p.type);
+  const dev = `${p.brand} ${p.model} ${isTab ? 'tablet' : 'smartphone'}`;
+  const placeA = 'Her phone hand is raised beside her shoulder, roughly at the horizontal centre of the image and about 35-45% from the top.';
+  const placeB = 'Her phone hand is extended towards the centre of the image, about 45% from the left edge and 40-55% from the top, the device large and clearly visible.';
+  return `Ultra-realistic high-end commercial advertising photograph, vertical 2:3 format, for a phone shop poster in Abidjan, Côte d'Ivoire.
+Subject: a beautiful elegant young African woman aged 22 to 30, ${$('aiPersona').value.trim() || randomPersona()}.
+Action: she holds a ${dev} in one hand${isTab ? ', screen facing the camera with a colourful abstract wallpaper' : ', showing the back of the phone with its camera module (or the screen with a colourful wallpaper)'}, and points at it with the index finger of her other hand, manicured nails. ${state.variant === 'b' ? placeB : placeA}
+Device appearance (must be accurate and realistic): ${p.design || 'modern smartphone, matching the official product design of the ' + dev}.${p.colors && p.colors.length ? ' Colour: ' + p.colors[0] + '.' : ''}
+Composition (very important, text will be added later): the woman occupies the left 55-60% of the frame. The top 15% of the frame and the right 35% of the frame must be uncluttered, bright and softly blurred background. Her body continues to the bottom edge.
+Setting: bright elegant living room with white walls, green plants, a burgundy velvet sofa, soft warm studio lighting, shallow depth of field, crisp skin detail, magazine quality.
+Do not add any text, letters, numbers, logos, price, frames or graphic elements to the image.`;
+}
+async function genImage(prompt, aspect, refURL){
+  const parts = [{text: prompt}];
+  if (refURL){
+    const m = refURL.match(/^data:(.+?);base64,(.*)$/);
+    if (m){ parts.push({inlineData:{mimeType:m[1], data:m[2]}}); parts[0].text += '\nUse the attached product photo as the exact visual reference for the device.'; }
+  }
+  const body = { contents:[{role:'user', parts}], generationConfig:{ responseModalities:['TEXT','IMAGE'], imageConfig:{ aspectRatio: aspect } } };
+  let j;
+  try { j = await GEM.call(GEM.imageModel(), body); }
+  catch(e){ if (/imageConfig|aspect/i.test(e.message)) { delete body.generationConfig.imageConfig; j = await GEM.call(GEM.imageModel(), body); } else throw e; }
+  const cand = (j.candidates||[])[0];
+  const img = cand && cand.content && (cand.content.parts||[]).find(p=>p.inlineData || p.inline_data);
+  if (!img){
+    const why = (cand && cand.finishReason) || (j.promptFeedback && j.promptFeedback.blockReason) || '';
+    throw new Error("Aucune image reçue" + (why ? ' (' + why + ')' : '') + '. Clique « Autre mannequin » pour réessayer.');
+  }
+  const d = img.inlineData || img.inline_data;
+  return `data:${d.mimeType || d.mime_type || 'image/png'};base64,${d.data}`;
+}
+async function genPhoto(){
+  if (!$('aiPersona').value.trim()) $('aiPersona').value = randomPersona();
+  const url = await genImage(photoPrompt(), '2:3', productURL);
+  photoURL = url; aiPhoto = true;
+  $('pz').value = 100; $('px').value = 0; $('py').value = 0;
+  render();
+}
+
+/* ---------- 3. Rangée de coloris (modèle A) ---------- */
+async function genStrip(){
+  const p = state.product || {brand:state.brand, model:(state.model||'').replace(/\*/g,''), colors:[], design:''};
+  const cols = (p.colors && p.colors.length ? p.colors : ['black','silver','light blue']).slice(0,4);
+  const prompt = `Professional studio product photograph of ${cols.length + 1} ${p.brand} ${p.model} devices standing upright side by side and slightly overlapping, in a row, facing the camera.
+The first ${cols.length} show the back with the camera module, in these colours from left to right: ${cols.join(', ')}. The last one shows the front screen with a colourful abstract wallpaper.
+Device appearance (must be accurate): ${p.design || 'official product design'}.
+Pure flat white (#FFFFFF) seamless background, no floor reflection, no shadow on the background, sharp details, no text, no logos added.`;
+  const raw = await genImage(prompt, '16:9', productURL);
+  stripURL = await removeWhiteBg(raw);
+  render();
+}
+function loadImg(src){ return new Promise((res,rej)=>{ const i = new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+async function removeWhiteBg(url){ // détourage : efface le fond blanc relié aux bords, puis recadre
+  const img = await loadImg(url);
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+  const d = x.getImageData(0,0,w,h), p = d.data, seen = new Uint8Array(w*h), st = [];
+  const bg = i => { const r=p[i*4], g=p[i*4+1], b=p[i*4+2]; return r>228 && g>228 && b>228 && Math.max(r,g,b)-Math.min(r,g,b) < 20; };
+  for (let i=0;i<w;i++){ st.push(i, (h-1)*w+i); }
+  for (let j=0;j<h;j++){ st.push(j*w, j*w+w-1); }
+  while (st.length){
+    const i = st.pop(); if (seen[i]) continue; seen[i] = 1; if (!bg(i)) continue;
+    p[i*4+3] = 0; const xx = i % w, yy = (i / w) | 0;
+    if (xx>0) st.push(i-1); if (xx<w-1) st.push(i+1); if (yy>0) st.push(i-w); if (yy<h-1) st.push(i+w);
+  }
+  let x0=w, y0=h, x1=0, y1=0;
+  for (let yy=0; yy<h; yy++) for (let xx=0; xx<w; xx++) if (p[(yy*w+xx)*4+3] > 0){ if(xx<x0)x0=xx; if(xx>x1)x1=xx; if(yy<y0)y0=yy; if(yy>y1)y1=yy; }
+  x.putImageData(d,0,0);
+  if (x1 <= x0 || y1 <= y0) return c.toDataURL('image/png');
+  const o = document.createElement('canvas'); o.width = x1-x0+1; o.height = y1-y0+1;
+  o.getContext('2d').drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
+  return o.toDataURL('image/png');
+}
+
+/* ---------- Boutons ---------- */
+async function run(label, fn){
+  busy(true); status(label + '…', 'work');
+  try { await fn(); status('Terminé ✔', 'ok'); }
+  catch(e){ console.error(e); status(e.message || String(e), 'err'); }
+  busy(false);
+}
+$('aiAll').onclick = () => run('Recherche des caractéristiques', async ()=>{
+  const d = await fetchSpecs(); applySpecs(d);
+  status('Création du mannequin' + (state.variant==='a' ? ' et des coloris' : '') + '… (30 s à 1 min)', 'work');
+  $('aiPersona').value = randomPersona();
+  const jobs = [genPhoto()];
+  if (state.variant === 'a') jobs.push(genStrip().catch(e=>{ console.warn(e); }));
+  await Promise.all(jobs);
+});
+$('aiSpecs').onclick = () => run('Recherche des caractéristiques', async ()=>{ applySpecs(await fetchSpecs()); });
+$('aiNewModel').onclick = () => run('Création d\'un nouveau mannequin (30 s à 1 min)', async ()=>{ $('aiPersona').value = randomPersona(); await genPhoto(); });
+$('aiRedo').onclick = () => run('Nouvelle photo avec cette description', genPhoto);
+$('aiDice').onclick = () => { $('aiPersona').value = randomPersona(); };
+$('aiStrip').onclick = () => run('Création de la rangée de coloris', genStrip);
+
+/* ---------- Réglages ---------- */
+$('apiKey').value = LS.get('zstore-gemini-key');
+fillModelSelect($('textModel'), [LS.get('zstore-text-model','gemini-2.5-flash')], LS.get('zstore-text-model','gemini-2.5-flash'));
+fillModelSelect($('imageModel'), [LS.get('zstore-image-model','gemini-2.5-flash-image')], LS.get('zstore-image-model','gemini-2.5-flash-image'));
+$('apiKey').addEventListener('change', ()=> LS.set('zstore-gemini-key', $('apiKey').value.trim()));
+$('textModel').addEventListener('change', ()=> LS.set('zstore-text-model', $('textModel').value));
+$('imageModel').addEventListener('change', ()=> LS.set('zstore-image-model', $('imageModel').value));
+$('aiCheck').onclick = () => run('Vérification de la clé', async ()=>{
+  LS.set('zstore-gemini-key', GEM.key());
+  const list = await GEM.listModels();
+  const t = rankModels(list, false), i = rankModels(list, true);
+  if (!t.length || !i.length) throw new Error('Clé valide, mais aucun modèle ' + (!i.length ? "d'image" : 'de texte') + ' Gemini disponible sur ce compte.');
+  const ts = t.includes(LS.get('zstore-text-model')) ? LS.get('zstore-text-model') : t[0];
+  const is = i.includes(LS.get('zstore-image-model')) ? LS.get('zstore-image-model') : i[0];
+  fillModelSelect($('textModel'), t, ts); fillModelSelect($('imageModel'), i, is);
+  LS.set('zstore-text-model', ts); LS.set('zstore-image-model', is);
+});
+
 window.__zstore = {setPhoto:u=>{photoURL=u;render();}, setProduct:u=>{productURL=u;render();}, loadPreset, render};
 </script>
 </body>
