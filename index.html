@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zstore Affiches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,500;0,600;0,700;0,800;0,900;1,800;1,900&family=Poppins:wght@400;500;600;700&family=Kaushan+Script&display=swap" rel="stylesheet">
+<script src="vendor/html-to-image.js"></script>
+<style>
+:root{
+  --red:#9b0f1f; --red2:#c8102e; --red-dark:#5e0711; --gold1:#fbe7a1; --gold2:#e0b44c; --gold3:#b9852a;
+  --ink:#141414; --ui-bg:#f4f1f1; --ui-card:#fff; --ui-text:#222; --ui-muted:#777; --ui-line:#e3dcdc;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --ui-bg:#1b1718; --ui-card:#262122; --ui-text:#eee; --ui-muted:#aaa; --ui-line:#3a3233; }
+}
+:root[data-theme="dark"]{ --ui-bg:#1b1718; --ui-card:#262122; --ui-text:#eee; --ui-muted:#aaa; --ui-line:#3a3233; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--ui-bg);color:var(--ui-text);font-family:Poppins,system-ui,sans-serif}
+
+/* ---------- Interface ---------- */
+.app{display:grid;grid-template-columns:420px 1fr;min-height:100vh}
+.panel{background:var(--ui-card);border-right:1px solid var(--ui-line);padding:18px 18px 60px;overflow:auto;max-height:100vh}
+.panel h1{font:800 22px Montserrat;margin:0 0 4px;color:var(--red2)}
+.panel p.sub{margin:0 0 14px;color:var(--ui-muted);font-size:13px}
+fieldset{border:1px solid var(--ui-line);border-radius:12px;padding:10px 12px 12px;margin:0 0 12px}
+legend{font:700 13px Montserrat;padding:0 6px;color:var(--red2);text-transform:uppercase;letter-spacing:.5px}
+label{display:block;font-size:12px;color:var(--ui-muted);margin:8px 0 3px}
+input[type=text],input[type=number],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--ui-line);border-radius:8px;background:transparent;color:var(--ui-text);font:inherit;font-size:14px}
+textarea{resize:vertical;min-height:54px}
+input[type=range]{width:100%}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+button{border:0;border-radius:8px;padding:8px 12px;font:600 13px Poppins;cursor:pointer;background:var(--ui-line);color:var(--ui-text)}
+button.primary{background:var(--red2);color:#fff;font-size:15px;padding:12px 16px;width:100%}
+button.small{padding:5px 9px;font-size:12px}
+.spec-row{display:grid;grid-template-columns:96px 1fr 28px;gap:6px;align-items:start;border-top:1px dashed var(--ui-line);padding-top:8px;margin-top:8px}
+.spec-row .f{display:grid;gap:4px}
+.spec-row input,.spec-row select{padding:6px 8px;font-size:13px}
+.hint{font-size:11px;color:var(--ui-muted);margin-top:4px}
+.stage{display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:hidden}
+#scaler{transform-origin:top left}
+body.print .panel{display:none} body.print .app{display:block} body.print .stage{padding:0;height:auto!important}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .panel{max-height:none;border-right:0;padding:16px}
+  .stage{padding:16px;order:-1}
+}
+
+/* ---------- Affiche ---------- */
+#poster{position:relative;width:1024px;height:1536px;overflow:hidden;background:
+  radial-gradient(ellipse at 70% 20%,#fff 0%,#fbf3f3 40%,#efdcdc 100%);font-family:Poppins,sans-serif;color:var(--ink)}
+#poster *{box-sizing:border-box}
+.ph{position:absolute;inset:0;overflow:hidden}
+.ph img{position:absolute;left:50%;top:50%;transform-origin:center}
+.ph .empty{position:absolute;left:60px;top:330px;width:520px;height:820px;border:4px dashed #d9b8bc;border-radius:30px;display:flex;align-items:center;justify-content:center;text-align:center;color:#b88a90;font:600 30px Montserrat;padding:40px}
+.veil{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0) 40%,rgba(255,255,255,.85) 75%,rgba(255,255,255,.9) 100%)}
+
+/* Logo */
+.logo{position:absolute;left:60px;top:4px;width:440px;text-align:center}
+.logo .mark{display:flex;align-items:flex-end;justify-content:center;gap:0;height:130px}
+.logo .bag{position:relative;width:112px;height:104px}
+.logo .bag .handle{position:absolute;left:28px;top:-26px;width:56px;height:56px;border:9px solid #2b0a0e;border-bottom:0;border-radius:30px 30px 0 0}
+.logo .bag .body{position:absolute;inset:14px 0 0 0;background:linear-gradient(160deg,#e01b36,#8e0b1b);border-radius:10px 10px 16px 16px;box-shadow:0 6px 12px rgba(120,0,15,.35)}
+.logo .bag .z{position:absolute;inset:6px 0 0 0;display:flex;align-items:center;justify-content:center;color:#fff;font:900 108px/1 Montserrat;letter-spacing:-4px;text-shadow:0 3px 0 rgba(0,0,0,.15)}
+.logo .word{font:900 112px/0.86 Montserrat;letter-spacing:-5px;background:linear-gradient(180deg,#e3203a,#8e0b1b);-webkit-background-clip:text;background-clip:text;color:transparent;margin-left:-6px;padding-bottom:4px}
+.logo .name{font:800 31px Montserrat;letter-spacing:9px;margin-top:4px;color:#1b1b1b;text-shadow:0 0 10px #fff,0 0 4px #fff}
+.logo .tag{font:500 19.5px Montserrat;letter-spacing:.2px;margin-top:2px;color:#1b1b1b;text-shadow:0 0 10px #fff,0 0 4px #fff}
+.logo .swoosh{height:3px;width:200px;margin:8px auto 0;background:linear-gradient(90deg,transparent,var(--red2),transparent);border-radius:3px}
+
+/* Accroche */
+.hook{position:absolute;right:40px;top:22px;width:450px;text-align:center;transform:rotate(-5deg);font:600 38px/1.05 Poppins;color:#1b1b1b}
+.hook .l2{font:800 42px/1.1 Poppins}
+.hook em{font-style:normal;color:var(--red2)}
+.hook>div:not(.underline){white-space:nowrap}
+.hook .underline{height:4px;width:330px;margin:6px auto 0;background:linear-gradient(90deg,transparent,var(--red2) 30%,var(--red2) 70%,transparent);border-radius:4px}
+
+/* Titre produit */
+.titles{position:absolute;right:20px;top:146px;width:470px;text-align:center}
+.brand{font:900 66px/1 Montserrat;letter-spacing:2px;color:#1a3fb0}
+.model{font:900 92px/1.02 Montserrat;letter-spacing:-3px;color:#0f0f0f;white-space:nowrap}
+.model em{font-style:normal;color:var(--red2)}
+.pill{display:inline-block;margin-top:6px;padding:2px 30px 8px;border-radius:40px;background:linear-gradient(180deg,#b4142a,#6d0816);color:#fff;font:800 52px/1.1 Montserrat;box-shadow:0 6px 14px rgba(110,0,15,.3)}
+
+/* Prix (modèle A) */
+.priceA{position:absolute;right:30px;top:372px;width:396px;height:170px}
+.priceA .blob{position:absolute;left:0;right:0;top:0;height:120px;border-radius:60px;background:linear-gradient(180deg,#d01a33,#7a0918);border:5px solid #fff;box-shadow:0 10px 22px rgba(110,0,15,.35);display:flex;align-items:center;justify-content:center;color:#fff;font:900 116px/1 Montserrat;letter-spacing:-5px;text-shadow:0 4px 0 rgba(0,0,0,.25)}
+.priceA .fcfa{position:absolute;left:92px;right:92px;top:106px;height:56px;background:linear-gradient(180deg,var(--gold1),var(--gold2) 55%,var(--gold3));clip-path:polygon(0 0,100% 0,94% 50%,100% 100%,0 100%,6% 50%);display:flex;align-items:center;justify-content:center;font:900 42px Montserrat;color:#111}
+.priceA .burst{position:absolute;left:-46px;top:-12px;width:50px;height:60px}
+.priceA .burst i{position:absolute;height:7px;border-radius:4px;background:var(--red2)}
+
+/* Fiche technique */
+.specs{position:absolute;background:rgba(255,255,255,.96);border-radius:26px;box-shadow:0 8px 26px rgba(80,0,10,.14)}
+.spec{display:flex;align-items:center;gap:16px}
+.spec .ic{flex:none;display:flex;align-items:center;justify-content:center}
+.spec svg{display:block}
+.spec .t1{font:500 18px/1.15 Poppins;color:#111}
+.spec .t2{font:600 18px/1.15 Poppins;color:#111}
+.spec .t3{font:400 14.5px/1.3 Poppins;color:#333}
+
+/* Slogan */
+.slogan{position:absolute;left:24px;top:1048px;width:560px;transform:rotate(-8deg);font:400 52px/1.08 'Kaushan Script',cursive;color:#b1122a;-webkit-text-stroke:0;text-shadow:3px 0 #fff,-3px 0 #fff,0 3px #fff,0 -3px #fff,2px 2px #fff,-2px -2px #fff,2px -2px #fff,-2px 2px #fff,0 6px 10px rgba(0,0,0,.25)}
+.slogan #pSlogan>div{white-space:nowrap;overflow:hidden;padding:0 6px}
+.slogan .sw{height:14px;width:300px;margin:4px 0 0 70px;border-radius:50%;border-bottom:4px solid var(--gold2);border-top:0}
+
+/* Image produit */
+.prod{position:absolute;display:flex;align-items:flex-end;justify-content:center}
+.prod img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 12px 16px rgba(0,0,0,.3))}
+
+/* Ruban (modèle A) */
+.ribbon{position:absolute;right:20px;top:1138px;width:368px;transform:rotate(-6deg);text-align:center}
+.ribbon .r1{white-space:nowrap;overflow:hidden;background:linear-gradient(180deg,#c3132c,#6f0816);color:#fff;font:900 34px/1 Montserrat;padding:14px 10px 30px;border-radius:30px 30px 6px 6px;box-shadow:0 6px 14px rgba(0,0,0,.25)}
+.ribbon .r2{margin:-22px -12px 0;background:linear-gradient(180deg,var(--gold1),var(--gold2) 60%,var(--gold3));clip-path:polygon(0 0,100% 0,97% 50%,100% 100%,0 100%,3% 50%);font:600 25px/1 Poppins;color:#111;padding:12px 10px 13px}
+
+/* Prix (modèle B) */
+.priceB{position:absolute;right:16px;top:948px;width:396px;display:none;text-align:center}
+.priceB .box{border-radius:28px;background:linear-gradient(180deg,#c3132c,#6f0816);border:4px solid #f0c66b;padding:14px 10px 10px;color:#fff;box-shadow:0 12px 26px rgba(110,0,15,.35)}
+.priceB .lbl{font:600 29px Poppins;letter-spacing:.5px}
+.priceB .val{font:900 108px/1 Montserrat;letter-spacing:-5px;text-shadow:0 4px 0 rgba(0,0,0,.25)}
+.priceB .gold{margin:12px 6px 0;border-radius:30px;background:linear-gradient(180deg,var(--gold1),var(--gold2) 60%,var(--gold3));font:600 21px/1 Poppins;color:#111;padding:14px 8px;text-transform:uppercase;box-shadow:0 6px 12px rgba(0,0,0,.18)}
+
+/* Pied de page */
+.foot{position:absolute;left:0;right:0;bottom:0;height:292px;color:#fff}
+.foot .bgc{position:absolute;inset:0;background:linear-gradient(180deg,#8f0d1d,#5c0610);clip-path:path('M0 22 C 260 0, 600 10, 1024 30 L1024 292 L0 292 Z')}
+.foot .side{position:absolute;right:0;bottom:0;width:390px;height:262px;background:linear-gradient(160deg,#a5112a,#4f040c);clip-path:path('M120 0 C 220 40, 300 20, 390 10 L390 262 L0 262 C 40 200, 50 120, 120 0 Z')}
+.foot .gi{flex:none;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#e6b850 50%,#a8761d);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 8px rgba(0,0,0,.35)}
+.foot .gi svg{width:34px;height:34px;fill:#7a0918}
+.foot .it{position:absolute;display:flex;gap:26px;align-items:center}
+.foot .k{font:500 21px/1.15 Poppins}
+.foot .v{font:500 25px/1.2 Poppins}
+.foot .vbig{font:600 34px/1.1 Poppins;letter-spacing:.5px}
+.foot .sep{position:absolute;left:368px;top:52px;width:2px;height:62px;background:rgba(255,215,140,.6)}
+.foot .services{position:absolute;left:36px;bottom:30px;display:flex;gap:26px;align-items:center}
+.foot .services .txt{font:400 18px Poppins;white-space:nowrap}
+.foot .services b{font:600 22px Poppins}
+.foot .services .bar{display:inline-block;width:1.5px;height:20px;background:#fff;margin:0 12px;vertical-align:-3px;opacity:.8}
+.foot .fb{position:absolute;right:16px;top:78px;width:300px;text-align:center}
+.foot .fb .n{font:800 46px/1 Montserrat;letter-spacing:2px;white-space:nowrap}
+.foot .fb .s{font:400 18px Poppins;margin-top:10px;white-space:nowrap;overflow:hidden}
+
+/* ---- Positions modèle A ---- */
+.v-a .specs{left:688px;top:540px;width:322px;padding:12px 10px 12px 20px}
+.v-a .spec{height:92px}
+.v-a .spec .ic{width:76px;height:76px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#c8152f,#7a0918);box-shadow:0 4px 8px rgba(110,0,15,.3)}
+.v-a .spec svg{width:42px;height:42px;stroke:#fff}
+.v-a .prod{left:650px;top:1010px;width:340px;height:170px}
+.v-a .foot .it.c1{left:36px;top:40px}
+.v-a .foot .it.c2{left:392px;top:40px;gap:16px}
+.v-a .foot .c2 .v{font-size:24px}
+.v-a .foot .it.c3{left:36px;top:120px}
+
+/* ---- Positions modèle B ---- */
+.v-b .logo{left:100px;top:6px;width:420px}
+.v-b .logo .tag{font-size:18px}
+.v-b .hook{right:90px;top:30px;width:360px;transform:rotate(-3deg);font-size:36px;line-height:1.08}
+.v-b .hook .l2{font-weight:500;font-size:36px}
+.v-b .hook .l3{font:800 52px/1.05 Poppins;color:var(--red2)}
+.v-b .titles{top:244px;right:20px;width:520px}
+.v-b .brand{display:inline-block;background:#0b0b0b;color:#fff !important;font:700 44px/1 Poppins;letter-spacing:0;padding:8px 26px 10px;border-radius:14px}
+.v-b .model{font-size:96px;margin-top:6px}
+.v-b .pill{font-size:52px;padding:2px 36px 8px;background:linear-gradient(180deg,#d0172f,#8a0a1b)}
+.v-b .priceA,.v-b .ribbon,.v-b .slogan,.v-b .foot .fb,.v-b .foot .side{display:none}
+.v-b .priceB{display:block}
+.v-b .specs{left:778px;top:540px;width:234px;padding:18px 10px 18px 18px}
+.v-b .spec{height:92px;gap:14px}
+.v-b .spec .ic{width:58px;height:58px}
+.v-b .spec svg{width:52px;height:52px;stroke:#111}
+.v-b .spec .t3{display:none}
+.v-b .spec .t1,.v-b .spec .t2{font-size:19px;font-weight:500}
+.v-b .prod{left:478px;top:505px;width:310px;height:400px;align-items:center}
+.v-b .foot{height:302px}
+.v-b .foot .bgc{clip-path:none;background:linear-gradient(180deg,#86101f,#5e0711);border-top:3px solid #f0c66b}
+.v-b .foot .it.c1{left:52px;top:26px}
+.v-b .foot .it.c2{left:544px;top:26px}
+.v-b .foot .it.c3{left:48px;top:128px;gap:22px}
+.v-b .foot .it.c3 .gi{width:58px;height:58px}
+.v-b .foot .sep{left:510px;top:30px;height:72px}
+.v-b .foot .vbig{font-size:44px;font-weight:500}
+.v-b .foot .c2 .v{font-size:34px}
+.v-b .foot .c3 .v{font-size:24px}
+.v-b .foot .services{left:48px;bottom:36px;gap:22px}
+.v-b .foot .services .gi{width:58px;height:58px}
+.v-b .foot .services b{font:400 18px Poppins}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <h1>Créateur d'affiches Zstore</h1>
+    <p class="sub">Remplis les champs, ajoute la photo et l'image du produit, puis télécharge l'affiche en PNG.</p>
+
+    <fieldset>
+      <legend>Démarrer</legend>
+      <label>Modèle de mise en page</label>
+      <select id="variant">
+        <option value="a">A : prix en haut, 5 atouts, ruban (Galaxy A17 / Fort 1 / Zeno 5)</option>
+        <option value="b">B : prix en bas, 4 atouts, téléphone au centre (Wave 7C / Shark 6)</option>
+      </select>
+      <label>Charger un exemple</label>
+      <div class="btns" id="presets"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Images</legend>
+      <label>Photo principale (mannequin + décor)</label>
+      <input type="file" id="photo" accept="image/*">
+      <div class="row">
+        <div><label>Zoom</label><input type="range" id="pz" min="30" max="250" value="100"></div>
+        <div><label>Voile blanc à droite</label><input type="range" id="veil" min="0" max="100" value="0"></div>
+      </div>
+      <div class="row">
+        <div><label>Décalage horizontal</label><input type="range" id="px" min="-600" max="600" value="0"></div>
+        <div><label>Décalage vertical</label><input type="range" id="py" min="-800" max="800" value="0"></div>
+      </div>
+      <label>Image du produit (PNG détouré de préférence)</label>
+      <input type="file" id="product" accept="image/*">
+      <div class="hint">Modèle A : la rangée de coloris en bas à droite. Modèle B : le téléphone au centre.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Produit</legend>
+      <label>Accroche (une ligne par saut, *mot* = en rouge)</label>
+      <textarea id="hook"></textarea>
+      <div class="row">
+        <div><label>Marque</label><input type="text" id="brand"></div>
+        <div><label>Couleur de la marque</label><input type="text" id="brandColor" placeholder="#1a3fb0"></div>
+      </div>
+      <label>Modèle (*texte* = en rouge)</label>
+      <input type="text" id="model">
+      <div class="row">
+        <div><label>Stockage</label><input type="text" id="storage"></div>
+        <div><label>Prix</label><input type="text" id="price"></div>
+      </div>
+      <label>Slogan manuscrit (modèle A)</label>
+      <textarea id="slogan"></textarea>
+      <div class="row">
+        <div><label>Ruban : titre</label><input type="text" id="ribbon1"></div>
+        <div><label>Bandeau doré</label><input type="text" id="ribbon2"></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Fiche technique</legend>
+      <div id="specRows"></div>
+      <div class="btns" style="margin-top:10px"><button class="small" id="addSpec">+ Ajouter une ligne</button></div>
+      <div class="hint">5 lignes conseillées pour le modèle A, 4 pour le modèle B.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Boutique (pied de page)</legend>
+      <div class="row">
+        <div><label>Contact</label><input type="text" id="contact"></div>
+        <div><label>Siège</label><input type="text" id="siege"></div>
+      </div>
+      <label>Magasins annexes</label>
+      <textarea id="annexes"></textarea>
+      <label>Services (séparés par |)</label>
+      <input type="text" id="services">
+      <div class="row">
+        <div><label>Logo marque (bas, modèle A)</label><input type="text" id="fbName"></div>
+        <div><label>Slogan de la marque</label><input type="text" id="fbSlogan"></div>
+      </div>
+    </fieldset>
+
+    <button class="primary" id="dl">⬇ Télécharger l'affiche (PNG)</button>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div id="scaler">
+      <div id="poster" class="v-a">
+        <div class="ph" id="ph"><div class="empty" id="phEmpty">Ajoute ta photo principale</div><img id="phImg" alt="" style="display:none"></div>
+        <div class="veil" id="veilEl" style="opacity:0"></div>
+
+        <div class="logo">
+          <div class="mark">
+            <div class="bag"><div class="handle"></div><div class="body"></div><div class="z">Z</div></div>
+            <div class="word">store</div>
+          </div>
+          <div class="name">ZEYNAB STORE</div>
+          <div class="tag">VOTRE SATISFACTION, NOTRE PRIORITÉ</div>
+          <div class="swoosh"></div>
+        </div>
+
+        <div class="hook" id="pHook"></div>
+
+        <div class="titles">
+          <div class="brand" id="pBrand"></div>
+          <div class="model" id="pModel"></div>
+          <div class="pill" id="pStorage"></div>
+        </div>
+
+        <div class="priceA">
+          <div class="burst"><i style="width:34px;left:6px;top:4px;transform:rotate(35deg)"></i><i style="width:40px;left:0;top:30px"></i><i style="width:30px;left:8px;top:56px;transform:rotate(-30deg)"></i></div>
+          <div class="blob" id="pPriceA"></div>
+          <div class="fcfa">FCFA</div>
+        </div>
+
+        <div class="specs" id="pSpecs"></div>
+
+        <div class="prod" id="pProd"></div>
+
+        <div class="slogan"><div id="pSlogan"></div><div class="sw"></div></div>
+
+        <div class="ribbon"><div class="r1" id="pR1"></div><div class="r2" id="pR2"></div></div>
+
+        <div class="priceB"><div class="box"><div class="lbl">PRIX EN FCFA</div><div class="val" id="pPriceB"></div></div><div class="gold" id="pGold"></div></div>
+
+        <div class="foot">
+          <div class="bgc"></div>
+          <div class="side"></div>
+          <div class="it c1"><div class="gi" id="giPhone"></div><div><div class="k">Contact :</div><div class="vbig" id="pContact"></div></div></div>
+          <div class="sep"></div>
+          <div class="it c2"><div class="gi pin" id="giPin" style="background:none;box-shadow:none"></div><div><div class="k">Siège :</div><div class="v" id="pSiege"></div></div></div>
+          <div class="it c3"><div class="gi" id="giShop"></div><div><div class="k">Magasins annexes :</div><div class="v" id="pAnnexes"></div></div></div>
+          <div class="services"><div class="gi" id="giGear"></div><div class="txt"><b>Services :</b> <span id="pServices"></span></div></div>
+          <div class="fb"><div class="n" id="pFbName"></div><div class="s" id="pFbSlogan"></div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ---------- Icônes ---------- */
+const ICONS = {
+  ecran:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2"/><path d="M9 7l6 0M10.5 15.5l4-6M10 19h4"/></svg>',
+  tablette:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><path d="M9 20.5h6"/></svg>',
+  memoire:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="13" height="13" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx=".8"/><path d="M8 2.5v3M12 2.5v3M16 2.5v3M8 18.5v3M12 18.5v3M16 18.5v3M2.5 8h3M2.5 12h3M2.5 16h3M18.5 8h3M18.5 12h3M18.5 16h3"/></svg>',
+  batterie:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="4" width="11" height="17.5" rx="2"/><path d="M10 2.5h4"/><path d="M12.8 8l-2.6 4.6h3.4l-2.4 4.4"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5a2 2 0 0 1 2-2h2.2l1.6-2h6.4l1.6 2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.8"/></svg>',
+  android:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10.5h11v7.5a1.5 1.5 0 0 1-1.5 1.5H8a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M6.5 9.5a5.5 5.5 0 0 1 11 0z"/><path d="M8.5 4.5l1 1.6M15.5 4.5l-1 1.6M4 11v5M20 11v5M9.5 19.5v2.5M14.5 19.5v2.5"/><circle cx="10" cy="7.6" r=".4"/><circle cx="14" cy="7.6" r=".4"/></svg>',
+  resistance:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10v-6z"/><path d="M12 8c1.6 2 2.6 3.4 2.6 4.8a2.6 2.6 0 0 1-5.2 0C9.4 11.4 10.4 10 12 8z"/></svg>',
+  ram:'<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"/><circle cx="12" cy="12" r="2.2"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></svg>'
+};
+const ICON_LABELS = {ecran:'Écran',tablette:'Tablette',memoire:'Mémoire',batterie:'Batterie',camera:'Caméra',android:'Android',resistance:'Résistance',ram:'Puce / RAM'};
+const FOOT_ICONS = {
+  phone:'<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" style="width:64px;height:64px"><defs><linearGradient id="gpin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#e6b850"/><stop offset="1" stop-color="#a8761d"/></linearGradient></defs><path fill="url(#gpin)" d="M12 1.5a7.5 7.5 0 0 0-7.5 7.5c0 5.6 7.5 13.5 7.5 13.5s7.5-7.9 7.5-13.5A7.5 7.5 0 0 0 12 1.5z"/><circle cx="12" cy="9" r="3" fill="#7a0918"/></svg>',
+  shop:'<svg viewBox="0 0 24 24"><path d="M3 4h18l-1 5a3 3 0 0 1-5.3 1.4A3 3 0 0 1 12 12a3 3 0 0 1-2.7-1.6A3 3 0 0 1 4 9zM5 12.8V20h5v-5h4v5h5v-7.2a4.4 4.4 0 0 1-4.5-.9A4.6 4.6 0 0 1 12 13a4.6 4.6 0 0 1-2.5-1.1 4.4 4.4 0 0 1-4.5.9z"/></svg>',
+  gear:'<svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>'
+};
+document.getElementById('giPhone').innerHTML = FOOT_ICONS.phone;
+document.getElementById('giPin').innerHTML = FOOT_ICONS.pin;
+document.getElementById('giShop').innerHTML = FOOT_ICONS.shop;
+document.getElementById('giGear').innerHTML = FOOT_ICONS.gear;
+
+/* ---------- Exemples (tirés des affiches existantes) ---------- */
+const SHOP = {contact:'0704083166', siege:'Abidjan, Treichville', annexes:'Cocody Saint-Jean, Riviera 2,\nYopougon, Bouaké Houphouët-Ville', services:'Toutes marques de téléphones | Vente en gros et détail | Livraison disponible'};
+const PRESETS = {
+  'Galaxy A17': {variant:'a', hook:'Un smartphone\n*puissant* et *élégant* !', brand:'SAMSUNG', brandColor:'#1a3fb0', model:'Galaxy A17', storage:'(128+4 Go)', price:'100.000',
+    slogan:"Plus qu'un téléphone,\nune expérience !", ribbon1:'SAMSUNG A17', ribbon2:'Élégant • Performant • Fiable', fbName:'SAMSUNG', fbSlogan:'Galaxy for Everyone',
+    specs:[['ecran','Écran','6.7" FHD+','Grand écran immersif'],['memoire','Mémoire','128 Go + 4 Go RAM',"Plus d'espace, plus de fluidité"],['batterie','Batterie','5000 mAh','Autonomie longue durée'],['camera','Caméra','50 MP','Des photos plus nettes'],['android','Android 15','','Performances optimisées']]},
+  'Fort 1': {variant:'a', hook:'Un smartphone\n*puissant* et *élégant* !', brand:'Blackview', brandColor:'#1a56c9', model:'Fort 1', storage:'(256/8 Go)', price:'90.000',
+    slogan:'La robustesse\nau service de vos exigences !', ribbon1:'BLACKVIEW FORT 1', ribbon2:'Solide • Performant • Fiable', fbName:'Blackview', fbSlogan:'Rugged Phones for a Tougher World',
+    specs:[['ecran','Écran','6.78" FHD+','Affichage clair et lumineux'],['memoire','Mémoire','256 Go + 8 Go RAM',"Plus d'espace, plus de fluidité"],['batterie','Batterie','8000 mAh','Autonomie longue durée'],['resistance','Résistance','IP68 & IP69K','Chocs, eau, poussière'],['android','Android 14','','Performances optimisées']]},
+  'Zeno 5': {variant:'a', hook:'Un smartphone\n*puissant* et *élégant* !', brand:'Blackview', brandColor:'#1a56c9', model:'ZENO 5', storage:'(128+8 Go)', price:'95.000',
+    slogan:'Le choix idéal\npour tous vos besoins !', ribbon1:'BLACKVIEW ZENO 5', ribbon2:'Élégant • Performant • Fiable', fbName:'Blackview', fbSlogan:'Rugged Phones for a Tougher World',
+    specs:[['ecran','Écran','6.78" HD+','Grand écran immersif'],['memoire','Mémoire','128 Go + 8 Go RAM',"Plus d'espace, plus de fluidité"],['batterie','Batterie','5000 mAh','Autonomie longue durée'],['camera','Caméra','50 MP','Des photos plus nettes'],['android','Android 14','','Performances optimisées']]},
+  'Wave 7C': {variant:'b', hook:'Un smartphone\nfiable et accessible\npour tous', brand:'Blackview', brandColor:'#111111', model:'WAVE *7C*', storage:'(64 + 4 Go)', price:'58.000',
+    ribbon2:'Qualité • Style • Performance', slogan:'', ribbon1:'', fbName:'', fbSlogan:'',
+    specs:[['camera','Caméra','8 MP',''],['ecran','Écran 6.56"','HD+',''],['ram','4 Go RAM','',''],['batterie','5000 mAh','','']]},
+  'Shark 6': {variant:'b', hook:'Un smartphone\nultra performant à\nprix canon', brand:'Blackview', brandColor:'#111111', model:'SHARK *6*', storage:'(128 Go)', price:'65.000',
+    ribbon2:'Qualité • Performance • Endurance', slogan:'', ribbon1:'', fbName:'', fbSlogan:'',
+    specs:[['camera','Caméra','50 MP',''],['ecran','Écran','6.88" HD+',''],['ram','8 Go RAM','',''],['batterie','6000 mAh','','']]}
+};
+
+const $ = id => document.getElementById(id);
+const FIELDS = ['variant','hook','brand','brandColor','model','storage','price','slogan','ribbon1','ribbon2','contact','siege','annexes','services','fbName','fbSlogan'];
+let state = {};
+let photoURL = null, productURL = null;
+
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function rich(s){return esc(s).replace(/\*(.+?)\*/g,'<em>$1</em>')}
+function lines(s){return esc(s).split('\n').join('<br>')}
+
+function fitText(el, _unused, base){ // réduit la police si le texte dépasse son cadre
+  el.style.fontSize = base+'px';
+  let size = base;
+  while (el.scrollWidth > el.clientWidth + 1 && size > 10){ size -= 2; el.style.fontSize = size+'px'; }
+}
+
+function render(){
+  const s = state, P = $('poster');
+  P.className = 'v-' + s.variant;
+  // Accroche
+  const hl = (s.hook||'').split('\n');
+  $('pHook').innerHTML = hl.map((l,i)=>`<div class="l${i+1}">${rich(l)}</div>`).join('') + '<div class="underline"></div>';
+  $('pHook').querySelectorAll('div:not(.underline)').forEach(d=>{ d.style.fontSize=''; const b=parseFloat(getComputedStyle(d).fontSize); fitText(d,0,b); });
+  $('pBrand').textContent = s.brand;
+  $('pBrand').style.color = s.variant==='a' ? (s.brandColor||'#1a3fb0') : '';
+  $('pModel').innerHTML = rich(s.model);
+  fitText($('pModel'), s.variant==='a'?470:520, s.variant==='a'?92:96);
+  fitText($('pBrand'), 460, s.variant==='a'?66:44);
+  $('pStorage').textContent = s.storage;
+  $('pStorage').style.display = s.storage ? '' : 'none';
+  $('pPriceA').textContent = s.price; fitText($('pPriceA'), 380, 116);
+  $('pPriceB').textContent = s.price; fitText($('pPriceB'), 370, 108);
+  $('pSlogan').innerHTML = (s.slogan||'').split('\n').map(l=>`<div>${esc(l)}</div>`).join('');
+  $('pSlogan').querySelectorAll('div').forEach(d=>fitText(d,0,52));
+  $('pR1').textContent = s.ribbon1; fitText($('pR1'), 340, 34);
+  $('pR2').textContent = s.ribbon2;
+  $('pGold').textContent = s.ribbon2;
+  // Fiche technique
+  const specs = (s.specs||[]);
+  $('pSpecs').innerHTML = specs.map(([ic,a,b,c])=>`<div class="spec"><div class="ic">${ICONS[ic]||ICONS.ecran}</div><div>${a?`<div class="t1">${esc(a)}</div>`:''}${b?`<div class="t2">${esc(b)}</div>`:''}${c?`<div class="t3">${esc(c)}</div>`:''}</div></div>`).join('');
+  $('pSpecs').style.display = specs.length ? '' : 'none';
+  // Pied
+  $('pContact').textContent = s.contact;
+  $('pSiege').textContent = s.siege;
+  $('pAnnexes').innerHTML = s.variant==='b' ? esc((s.annexes||'').replace(/,?\s*\n\s*/g,', ')) : lines(s.annexes);
+  $('pServices').innerHTML = (s.services||'').split('|').map(x=>esc(x.trim())).join('<span class="bar"></span>');
+  $('pFbName').textContent = s.fbName; fitText($('pFbName'), 0, 46);
+  $('pFbSlogan').textContent = s.fbSlogan; fitText($('pFbSlogan'),0,18);
+  // Images
+  $('pProd').innerHTML = productURL ? `<img src="${productURL}" alt="">` : '';
+  const img = $('phImg');
+  if (photoURL){
+    img.style.display=''; $('phEmpty').style.display='none';
+    if (img.src !== photoURL) img.src = photoURL;
+    placePhoto();
+  } else { img.style.display='none'; $('phEmpty').style.display=''; }
+  $('veilEl').style.opacity = ($('veil').value/100);
+  save();
+}
+
+function placePhoto(){
+  const img = $('phImg'); if (!img.naturalWidth) return;
+  const cover = Math.max(1024/img.naturalWidth, 1536/img.naturalHeight);
+  const z = cover * $('pz').value/100;
+  img.style.width = img.naturalWidth*z+'px';
+  img.style.height = img.naturalHeight*z+'px';
+  img.style.transform = `translate(calc(-50% + ${$('px').value}px), calc(-50% + ${$('py').value}px))`;
+}
+$('phImg').addEventListener('load', placePhoto);
+
+/* ---------- Formulaire ---------- */
+function specRowHTML(sp,i){
+  const opts = Object.keys(ICONS).map(k=>`<option value="${k}" ${k===sp[0]?'selected':''}>${ICON_LABELS[k]}</option>`).join('');
+  return `<div class="spec-row" data-i="${i}"><select data-k="0">${opts}</select><div class="f">
+    <input type="text" data-k="1" placeholder="Titre (ex. Écran)" value="${esc(sp[1])}">
+    <input type="text" data-k="2" placeholder="Valeur (ex. 6.7&quot; FHD+)" value="${esc(sp[2])}">
+    <input type="text" data-k="3" placeholder="Sous-titre (modèle A)" value="${esc(sp[3])}"></div>
+    <button class="small" data-del="${i}" title="Supprimer">✕</button></div>`;
+}
+function buildSpecRows(){ $('specRows').innerHTML = (state.specs||[]).map(specRowHTML).join(''); }
+$('specRows').addEventListener('input', e=>{
+  const row = e.target.closest('.spec-row'); if(!row) return;
+  state.specs[row.dataset.i][e.target.dataset.k] = e.target.value; render();
+});
+$('specRows').addEventListener('click', e=>{
+  if (e.target.dataset.del!==undefined){ state.specs.splice(+e.target.dataset.del,1); buildSpecRows(); render(); }
+});
+$('addSpec').onclick = ()=>{ (state.specs ||= []).push(['ecran','','','']); buildSpecRows(); render(); };
+
+function fillForm(){ FIELDS.forEach(f=>{ $(f).value = state[f] ?? ''; }); buildSpecRows(); }
+FIELDS.forEach(f=> $(f).addEventListener('input', ()=>{ state[f] = $(f).value; render(); }));
+['pz','px','py','veil'].forEach(id=> $(id).addEventListener('input', render));
+
+function loadPreset(name){
+  state = JSON.parse(JSON.stringify({...SHOP, ...PRESETS[name]}));
+  fillForm(); render();
+}
+Object.keys(PRESETS).forEach(n=>{
+  const b = document.createElement('button'); b.className='small'; b.textContent=n; b.onclick=()=>loadPreset(n); $('presets').appendChild(b);
+});
+
+function readFile(input, cb){ input.addEventListener('change', ()=>{ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>cb(r.result); r.readAsDataURL(f); }); }
+readFile($('photo'), url=>{ photoURL=url; render(); });
+readFile($('product'), url=>{ productURL=url; render(); });
+
+/* ---------- Sauvegarde locale ---------- */
+function save(){ try{ localStorage.setItem('zstore-affiche', JSON.stringify(state)); }catch(e){} }
+function restore(){ try{ const s = JSON.parse(localStorage.getItem('zstore-affiche')); if (s && s.variant) return s; }catch(e){} return null; }
+
+/* ---------- Mise à l'échelle de l'aperçu ---------- */
+function scale(){
+  if (location.hash === '#print'){ document.body.classList.add('print'); $('scaler').style.transform='none'; return; }
+  const st = $('stage'), sc = $('scaler');
+  const avail = Math.min(st.clientWidth - 32, 1024);
+  const k = avail/1024;
+  const kh = window.innerWidth > 900 ? Math.min(k, (window.innerHeight-40)/1536) : k;
+  sc.style.transform = `scale(${kh})`;
+  sc.style.width = 1024+'px'; sc.style.height = 1536+'px';
+  st.style.height = (1536*kh + 40)+'px';
+  sc.parentElement.style.minHeight = (1536*kh)+'px';
+}
+window.addEventListener('resize', scale);
+
+/* ---------- Export PNG ---------- */
+$('dl').onclick = async ()=>{
+  const btn = $('dl'); btn.textContent = 'Création du PNG…'; btn.disabled = true;
+  try{
+    await document.fonts.ready;
+    const url = await htmlToImage.toPng($('poster'), {pixelRatio:2, filter: n => !(n.tagName==='IMG' && !n.getAttribute('src'))});
+    const a = document.createElement('a');
+    a.download = ('affiche-' + (state.brand+'-'+state.model).replace(/\*/g,'').replace(/[^\w]+/g,'-')).toLowerCase() + '.png';
+    a.href = url; a.click();
+  }catch(e){ alert("Impossible de créer l'image : " + e.message); }
+  btn.textContent = "⬇ Télécharger l'affiche (PNG)"; btn.disabled = false;
+};
+
+/* ---------- Démarrage ---------- */
+const saved = restore();
+if (saved){ state = saved; fillForm(); render(); } else loadPreset('Galaxy A17');
+scale();
+document.fonts.ready.then(render);
+window.__zstore = {setPhoto:u=>{photoURL=u;render();}, setProduct:u=>{productURL=u;render();}, loadPreset, render};
+</script>
+</body>
+</html>
