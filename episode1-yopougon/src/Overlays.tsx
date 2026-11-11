@@ -28,7 +28,7 @@ const SpeedLines: React.FC<{ color?: string; seed?: number }> = ({ color = "#fff
 const Tag: React.FC<{ text: string; f: number }> = ({ text, f }) => {
   const V = useV();
   return (
-  <div style={{ position: "absolute", left: V ? 40 : 70, right: V ? 40 : undefined, top: V ? 300 : 60, textAlign: "center", padding: "10px 26px", background: "#d50000", color: "#fff", fontFamily: FONT, fontSize: V ? 40 : 44, letterSpacing: 3, border: "5px solid #fff", rotate: "-3deg", scale: lerp(f, [0, 6], [1.6, 1], easeOut) }}>
+  <div style={{ position: "absolute", left: V ? 40 : 70, right: V ? 40 : undefined, top: V ? 440 : 60, textAlign: "center", padding: "10px 26px", background: "#d50000", color: "#fff", fontFamily: FONT, fontSize: V ? 40 : 44, letterSpacing: 3, border: "5px solid #fff", rotate: "-3deg", scale: lerp(f, [0, 6], [1.6, 1], easeOut) }}>
     {text}
   </div>
   );
@@ -109,7 +109,7 @@ export const InsertJordans: React.FC = () => {
           <path d="M520 420 l10 28 l28 10 l-28 10 l-10 28 l-10 -28 l-28 -10 l28 -10z" fill="#fff" />
         </g>
       </svg>
-      <Tag text="INDICE 1 • JORDAN NEUVES SOUS TREILLIS" f={f} />
+      <Tag text="INDICE • JORDAN NEUVES SOUS TREILLIS" f={f} />
     </AbsoluteFill>
   );
 };
@@ -136,7 +136,7 @@ export const InsertHolster: React.FC = () => {
         </g>
         <text x={V ? 760 : 1000} y={V ? 1150 : 720} fontFamily={FONT} fontSize={90} fill="#fff" opacity={0.9} rotate="-4">VIDE !</text>
       </svg>
-      <Tag text="INDICE 2 • HOLSTER VIDE" f={f} />
+      <Tag text="INDICE • HOLSTER VIDE" f={f} />
     </AbsoluteFill>
   );
 };
@@ -183,7 +183,7 @@ export const TeleCU: React.FC = () => {
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at ${ph ? 15 : 85}% 40%, ${ph ? "rgba(255,20,40,0.35)" : "rgba(30,70,255,0.35)"}, transparent 60%)` }} />
       <div style={{ position: "absolute", inset: 0, opacity: 0.1 + 0.05 * noise(f, 3), background: "#fff", mixBlendMode: "overlay" }} />
       {V && !glitch && (
-        <div style={{ position: "absolute", top: 300, left: 50, right: 50, textAlign: "center", scale: lerp(f, [10, 22], [1.4, 1], easeOut) }}>
+        <div style={{ position: "absolute", top: 440, left: 50, right: 50, textAlign: "center", scale: lerp(f, [10, 22], [1.4, 1], easeOut) }}>
           <div style={{ display: "inline-block", background: "#d50000", color: "#fff", fontFamily: FONT, fontSize: 70, padding: "8px 30px", letterSpacing: 3 }}>FLASH INFO</div>
           <div style={{ color: "#fff", fontFamily: FONT, fontSize: 58, marginTop: 18, lineHeight: 1.1, textShadow: "0 4px 0 #000" }}>BRAQUAGE ANGRÉ 8è TRANCHE</div>
         </div>

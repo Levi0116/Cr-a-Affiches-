@@ -31,6 +31,7 @@ npm i
 npx remotion studio                      # prévisualiser / ajuster
 npx remotion render Episode1 out/episode1-yopougon.mp4       # 16:9
 npx remotion render Episode1TikTok out/episode1-tiktok.mp4   # 9:16 TikTok
+npx remotion render Episode1TikTokV2 out/episode1-tiktok-v2.mp4  # 9:16 version rétention (accroche + compteur d'indices)
 # régénérer l'audio (ne réécrit pas les fichiers existants) :
 node scripts/generer-audio.mjs && node scripts/lipsync.mjs
 ```
@@ -38,3 +39,10 @@ node scripts/generer-audio.mjs && node scripts/lipsync.mjs
 Note : les voix utilisent des voix ElevenLabs standards (le compte gratuit ne permet pas les voix
 de la bibliothèque à accent ivoirien). Pour une version finale, remplacer les fichiers de `public/voix/`
 par des enregistrements de comédiens ivoiriens (mêmes noms de fichiers), puis relancer `scripts/lipsync.mjs`.
+
+## Version « rétention » (V2)
+
+`src/EpisodeV2.tsx` remonte le film pour garder l'attention dès la 1re seconde :
+accroche en flash-forward (le faux gonmon qui menace, l'œil du blessé, Yao qui hésite) avec le défi
+« Trouve les 5 indices avant la fin », rembobinage « 2 minutes plus tôt », passages lents raccourcis,
+compteur d'indices 0/5 → 5/5 avec un son à chaque indice, et teasers avant les indices clés.

@@ -49,6 +49,9 @@ const SFX = {
   impact: ["Deep cinematic boom hit with reverb, dramatic reveal", 2],
   whoosh: ["Fast cinematic whoosh transition", 1],
   gel: ["Glass screen cracking and freezing, time stop effect, shatter freeze", 3],
+  rembobinage: ["VHS tape fast rewind with glitchy reversed audio scrubbing, ends with a click", 2],
+  indice: ["Short satisfying detective clue found sound, bright pop with sparkle chime", 1],
+  choc: ["Huge cinematic hit with bass drop and reverse whoosh riser into impact, trailer sting", 2],
   bip: ["Game show buttons blinking electronic pulse loop, suspenseful countdown ticks", 8],
 };
 

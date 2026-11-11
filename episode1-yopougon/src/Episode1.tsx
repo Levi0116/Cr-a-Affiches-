@@ -106,7 +106,7 @@ const CUES: Cue[] = VOIX.flatMap((v) => {
   });
 });
 
-const SousTitres: React.FC = () => {
+export const SousTitres: React.FC = () => {
   const f = useCurrentFrame();
   const V = useV();
   const c = CUES.filter((q) => f >= q.from && f < q.to + 6).pop();
@@ -189,8 +189,8 @@ const Grain: React.FC = () => {
   );
 };
 
-export const Episode1: React.FC = () => {
-  return (
+// Toute l'image (sans le son) ; intro = carton titre + fondu d'ouverture
+export const Visuels: React.FC<{ intro?: boolean; sousTitres?: boolean }> = ({ intro = true, sousTitres = true }) => (
     <AbsoluteFill style={{ background: "#000" }}>
       <Monde />
       <Sequence from={1660} durationInFrames={35} name="Insert indices">
@@ -211,15 +211,24 @@ export const Episode1: React.FC = () => {
       {/* vignette permanente */}
       <AbsoluteFill style={{ background: "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.6) 100%)", pointerEvents: "none" }} />
       <Grain />
-      <Sequence durationInFrames={120} name="Titre">
-        <Titre />
-      </Sequence>
-      <SousTitres />
-      {/* fondu d'ouverture */}
-      <Sequence durationInFrames={20}>
-        <FonduNoir />
-      </Sequence>
+      {intro && (
+        <Sequence durationInFrames={120} name="Titre">
+          <Titre />
+        </Sequence>
+      )}
+      {sousTitres && <SousTitres />}
+      {intro && (
+        <Sequence durationInFrames={20}>
+          <FonduNoir />
+        </Sequence>
+      )}
+    </AbsoluteFill>
+);
 
+export const Episode1: React.FC = () => {
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <Visuels />
       {/* ===== AUDIO ===== */}
       <Audio src={staticFile("sfx/ambiance.mp3")} loop volume={(f) => (f < 1888 ? 0.45 : f < T.freeze ? 0.18 : 0.08)} />
       <Sequence from={1110} durationInFrames={T.freeze - 1110} name="Tension">
