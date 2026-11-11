@@ -6,15 +6,16 @@ Montages verticaux 1080 × 1920 faits à partir des vidéos de la boutique.
 |---|---|---|
 | Spécial JBL (≈ 57 s) | `JBL` | Xtreme 3, Pulse 5, Charge 6, Flip 7 – `src/data.ts`, `src/Video.tsx` |
 | Drones DJI & Xiaomi (≈ 2 min 11) | `DJI` | 9 produits avec prix et voix off – `src/dji-data.ts`, `src/DJIVideo.tsx` |
+| Harman Kardon (≈ 1 min 20) | `HK` | Onyx Studio 9 et 8, Aura Studio 2 et 3, prix et voix off – `src/hk-data.ts`, `src/HKVideo.tsx` |
 
 ## Modifier les textes et les prix
 
 - JBL : `src/data.ts`, champ `price` (vide = « Prix très bientôt »).
 - DJI : `src/dji-data.ts`, champ `price` (vide = « Prix sur demande »), caractéristiques, passages de la vidéo source (`segments`).
 
-## Voix off (DJI)
+## Voix off (DJI et Harman Kardon)
 
-Texte dans `voice-dji.json`, voix ElevenLabs « aude roxane ». Après avoir changé le texte :
+Texte dans `voice-dji.json` / `voice-hk.json`, voix ElevenLabs « aude roxane ». Après avoir changé le texte :
 
 ```bash
 ELEVENLABS_API_KEY=sk_... python3 make-voice.py voice-dji.json public/dji/voice --force
@@ -29,6 +30,7 @@ puis refaire le traitement vers `public/dji/vo/` et mettre à jour les durées d
 npm install
 npm run render       # out/JBL-Zeynab-Store.mp4
 npm run render:dji   # out/DJI-Zeynab-Store.mp4
+npm run render:hk    # out/HarmanKardon-Zeynab-Store.mp4
 npm run studio       # aperçu dans le navigateur
 ```
 

@@ -6,7 +6,8 @@
     "studio": "remotion studio src/index.tsx",
     "render": "remotion render src/index.tsx JBL out/JBL-Zeynab-Store.mp4 --codec=h264 --crf=20",
     "render:dji": "remotion render src/index.tsx DJI out/DJI-Zeynab-Store.mp4 --codec=h264 --crf=20",
-    "voice": "python3 make-voice.py voice-dji.json public/dji/voice"
+    "voice": "python3 make-voice.py voice-dji.json public/dji/voice",
+    "render:hk": "remotion render src/index.tsx HK out/HarmanKardon-Zeynab-Store.mp4 --codec=h264 --crf=20"
   },
   "keywords": [],
   "author": "",
