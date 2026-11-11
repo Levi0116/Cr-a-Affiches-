@@ -1,10 +1,19 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { Defs } from "./art/Defs";
 import { easeOut, lerp, noise } from "./lib/anim";
 
 const OUT = "#0b0a10";
 const FONT = "'Arial Black', 'Arial', sans-serif";
+
+// format vertical (TikTok) ?
+const useV = () => {
+  const { width, height } = useVideoConfig();
+  return height > width;
+};
+// fenêtre 16:9 -> 9:16 centrée sur le dessin
+const VB_V = "420 -420 1080 1920";
+const VB_H = "0 0 1920 1080";
 
 const SpeedLines: React.FC<{ color?: string; seed?: number }> = ({ color = "#fff", seed = 0 }) => (
   <g opacity={0.18}>
@@ -16,11 +25,14 @@ const SpeedLines: React.FC<{ color?: string; seed?: number }> = ({ color = "#fff
   </g>
 );
 
-const Tag: React.FC<{ text: string; f: number }> = ({ text, f }) => (
-  <div style={{ position: "absolute", left: 70, top: 60, padding: "10px 26px", background: "#d50000", color: "#fff", fontFamily: FONT, fontSize: 44, letterSpacing: 3, border: "5px solid #fff", rotate: "-3deg", scale: lerp(f, [0, 6], [1.6, 1], easeOut) }}>
+const Tag: React.FC<{ text: string; f: number }> = ({ text, f }) => {
+  const V = useV();
+  return (
+  <div style={{ position: "absolute", left: V ? 40 : 70, right: V ? 40 : undefined, top: V ? 300 : 60, textAlign: "center", padding: "10px 26px", background: "#d50000", color: "#fff", fontFamily: FONT, fontSize: V ? 40 : 44, letterSpacing: 3, border: "5px solid #fff", rotate: "-3deg", scale: lerp(f, [0, 6], [1.6, 1], easeOut) }}>
     {text}
   </div>
-);
+  );
+};
 
 // ---- Inserts indices ----
 export const InsertIndices: React.FC = () => {
@@ -30,9 +42,9 @@ export const InsertIndices: React.FC = () => {
   const z = lerp(lf, [0, 12], [1.25, 1.05], easeOut);
   return (
     <AbsoluteFill style={{ background: "#0a0a0f" }}>
-      <svg viewBox="0 0 1920 1080" width={1920} height={1080} style={{ scale: z }}>
+      <svg viewBox={useV() ? VB_V : VB_H} width="100%" height="100%" style={{ scale: z }}>
         <Defs />
-        <rect width={1920} height={1080} fill={["#2a1a0a", "#1a1408", "#0f1418"][k]} />
+        <rect x={-1000} y={-1000} width={4000} height={4000} fill={["#2a1a0a", "#1a1408", "#0f1418"][k]} />
         <SpeedLines seed={k} />
         {k === 0 && (
           <g transform="translate(960 560) rotate(-6)">
@@ -74,15 +86,16 @@ export const InsertIndices: React.FC = () => {
 
 export const InsertJordans: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   return (
     <AbsoluteFill style={{ background: "#0a0a0f" }}>
-      <svg viewBox="0 0 1920 1080" width={1920} height={1080} style={{ scale: lerp(f, [0, 45], [1.2, 1.02], easeOut) }}>
+      <svg viewBox={V ? VB_V : VB_H} width="100%" height="100%" style={{ scale: lerp(f, [0, 45], [1.2, 1.02], easeOut) }}>
         <Defs />
-        <rect width={1920} height={1080} fill="#14161c" />
-        <rect y={760} width={1920} height={320} fill="#24211f" />
+        <rect x={-1000} y={-1000} width={4000} height={4000} fill="#14161c" />
+        <rect x={-1000} y={760} width={4000} height={1200} fill="#24211f" />
         <SpeedLines />
         {[-1, 1].map((k) => (
-          <g key={k} transform={`translate(${960 + k * 330} 560)`}>
+          <g key={k} transform={`translate(${960 + k * (V ? 250 : 330)} 560) scale(${V ? 0.85 : 1})`}>
             <path d="M-170 -620 h300 l30 640 h-360z" fill="url(#camo)" stroke={OUT} strokeWidth={10} />
             <path d="M-260 300 q-10 -260 70 -300 h200 q90 90 150 200 q110 40 110 100 z" fill="#fbfbf7" stroke={OUT} strokeWidth={12} />
             <path d="M-260 300 h530" stroke="#c9c9c2" strokeWidth={26} />
@@ -103,16 +116,17 @@ export const InsertJordans: React.FC = () => {
 
 export const InsertHolster: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   return (
     <AbsoluteFill style={{ background: "#0a0a0f" }}>
-      <svg viewBox="0 0 1920 1080" width={1920} height={1080} style={{ scale: lerp(f, [0, 50], [1.25, 1.03], easeOut) }}>
+      <svg viewBox={V ? VB_V : VB_H} width="100%" height="100%" style={{ scale: lerp(f, [0, 50], [1.25, 1.03], easeOut) }}>
         <Defs />
-        <rect width={1920} height={1080} fill="#16171b" />
-        <rect y={200} width={1920} height={240} fill="#202227" />
-        <rect y={330} width={1920} height={90} fill="#2a1d12" stroke={OUT} strokeWidth={8} />
+        <rect x={-1000} y={-1000} width={4000} height={4000} fill="#16171b" />
+        <rect x={-1000} y={200} width={4000} height={240} fill="#202227" />
+        <rect x={-1000} y={330} width={4000} height={90} fill="#2a1d12" stroke={OUT} strokeWidth={8} />
         <rect x={1100} y={320} width={120} height={110} rx={10} fill="#8a8f96" stroke={OUT} strokeWidth={8} />
         <SpeedLines />
-        <g transform="translate(860 360)">
+        <g transform={V ? "translate(960 360)" : "translate(860 360)"}>
           <path d="M-150 -40 h300 l-30 640 h-240z" fill="#4a2e18" stroke={OUT} strokeWidth={12} />
           <path d="M-120 -30 h240 l-24 560 h-190z" fill="#5a3a20" />
           <ellipse cx={0} cy={-30} rx={150} ry={46} fill="#0b0805" stroke={OUT} strokeWidth={10} />
@@ -120,7 +134,7 @@ export const InsertHolster: React.FC = () => {
           <circle cx={262} cy={-200} r={16} fill="#c9d1d8" stroke={OUT} strokeWidth={6} />
           <path d="M-100 100 q-6 200 10 380 M100 100 q6 200 -10 380" stroke="#2e1c0e" strokeWidth={8} strokeDasharray="20 16" fill="none" />
         </g>
-        <text x={1000} y={720} fontFamily={FONT} fontSize={90} fill="#fff" opacity={0.9} rotate="-4">VIDE !</text>
+        <text x={V ? 760 : 1000} y={V ? 1150 : 720} fontFamily={FONT} fontSize={90} fill="#fff" opacity={0.9} rotate="-4">VIDE !</text>
       </svg>
       <Tag text="INDICE 2 • HOLSTER VIDE" f={f} />
     </AbsoluteFill>
@@ -130,11 +144,12 @@ export const InsertHolster: React.FC = () => {
 // ---- Télé : FLASH INFO ----
 export const TeleCU: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   const ph = Math.floor(f / 5) % 2;
   const glitch = f < 10;
   return (
     <AbsoluteFill style={{ background: "#07070a" }}>
-      <svg viewBox="0 0 1920 1080" width={1920} height={1080} style={{ scale: lerp(f, [0, 150], [1.05, 1.15]) }}>
+      <svg viewBox="0 0 1920 1080" width="100%" height="100%" style={{ scale: lerp(f, [0, 150], [1.05, 1.15]) }}>
         <Defs />
         <rect width={1920} height={1080} fill="#16120e" />
         <rect x={160} y={70} width={1600} height={980} rx={70} fill="#1d1d1f" stroke={OUT} strokeWidth={14} />
@@ -167,6 +182,12 @@ export const TeleCU: React.FC = () => {
       </svg>
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at ${ph ? 15 : 85}% 40%, ${ph ? "rgba(255,20,40,0.35)" : "rgba(30,70,255,0.35)"}, transparent 60%)` }} />
       <div style={{ position: "absolute", inset: 0, opacity: 0.1 + 0.05 * noise(f, 3), background: "#fff", mixBlendMode: "overlay" }} />
+      {V && !glitch && (
+        <div style={{ position: "absolute", top: 300, left: 50, right: 50, textAlign: "center", scale: lerp(f, [10, 22], [1.4, 1], easeOut) }}>
+          <div style={{ display: "inline-block", background: "#d50000", color: "#fff", fontFamily: FONT, fontSize: 70, padding: "8px 30px", letterSpacing: 3 }}>FLASH INFO</div>
+          <div style={{ color: "#fff", fontFamily: FONT, fontSize: 58, marginTop: 18, lineHeight: 1.1, textShadow: "0 4px 0 #000" }}>BRAQUAGE ANGRÉ 8è TRANCHE</div>
+        </div>
+      )}
     </AbsoluteFill>
   );
 };
@@ -174,12 +195,13 @@ export const TeleCU: React.FC = () => {
 // ---- Carton titre ----
 export const Titre: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   const op = lerp(f, [0, 12, 95, 115], [0, 1, 1, 0]);
   const chars = Math.floor(lerp(f, [8, 40], [0, 17]));
   return (
-    <AbsoluteFill style={{ opacity: op, justifyContent: "flex-start", padding: "70px 0 0 90px" }}>
+    <AbsoluteFill style={{ opacity: op, justifyContent: "flex-start", padding: V ? "300px 60px 0 60px" : "70px 0 0 90px" }}>
       <div style={{ fontFamily: FONT, color: "#ffd23f", fontSize: 34, letterSpacing: 8, textShadow: "0 0 18px #000" }}>ÉPISODE 1</div>
-      <div style={{ fontFamily: FONT, color: "#fff", fontSize: 76, letterSpacing: 2, textShadow: "0 4px 24px #000", translate: `${lerp(f, [0, 20], [-40, 0], easeOut)}px 0` }}>
+      <div style={{ fontFamily: FONT, color: "#fff", fontSize: V ? 72 : 76, lineHeight: 1.05, letterSpacing: 2, textShadow: "0 4px 24px #000", translate: `${lerp(f, [0, 20], [-40, 0], easeOut)}px 0` }}>
         LA TENUE MOUSSE PAS DROIT
       </div>
       <div style={{ fontFamily: "monospace", color: "#e8d27a", fontSize: 34, marginTop: 10, textShadow: "0 0 10px #000" }}>{"YOPOUGON • 01H30".slice(0, chars)}</div>
@@ -190,6 +212,7 @@ export const Titre: React.FC = () => {
 // ---- Choix interactif ----
 export const Choix: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   const inA = lerp(f, [30, 44], [0, 1], easeOut);
   const inB = lerp(f, [44, 58], [0, 1], easeOut);
   const blinkA = Math.floor(f / 12) % 2 === 0;
@@ -197,7 +220,7 @@ export const Choix: React.FC = () => {
   const Btn: React.FC<{ letter: string; title: string; sub: string; color: string; on: boolean; k: number }> = ({ letter, title, sub, color, on, k }) => (
     <div
       style={{
-        width: 760,
+        width: V ? 940 : 760,
         padding: "26px 34px",
         background: on ? color : "#111",
         border: `8px solid ${color}`,
@@ -220,19 +243,19 @@ export const Choix: React.FC = () => {
   );
   return (
     <AbsoluteFill>
-      <div style={{ position: "absolute", top: 60, width: "100%", textAlign: "center", fontFamily: FONT, fontSize: 64, color: "#fff", textShadow: "0 6px 0 #000, 0 0 30px #000", scale: lerp(f, [4, 18], [2, 1], easeOut), opacity: lerp(f, [4, 10], [0, 1]) }}>
+      <div style={{ position: "absolute", top: V ? 270 : 60, width: "100%", textAlign: "center", fontFamily: FONT, fontSize: V ? 58 : 64, color: "#fff", textShadow: "0 6px 0 #000, 0 0 30px #000", scale: lerp(f, [4, 18], [2, 1], easeOut), opacity: lerp(f, [4, 10], [0, 1]) }}>
         TU ES À LA PLACE DE YAO…
       </div>
-      <div style={{ position: "absolute", bottom: 200, width: "100%", display: "flex", justifyContent: "space-around" }}>
+      <div style={{ position: "absolute", bottom: V ? 520 : 200, width: "100%", display: "flex", flexDirection: V ? "column" : "row", alignItems: "center", gap: V ? 40 : 0, justifyContent: "space-around" }}>
         <Btn letter="A" title="TAPER LA BOUCHE" sub="Mentir aux faux gonmons" color="#2ecc40" on={blinkA} k={inA} />
         <Btn letter="B" title="VENDRE LE DJO" sub="Faire un signe du menton" color="#ff2a3a" on={!blinkA} k={inB} />
       </div>
-      <div style={{ position: "absolute", bottom: 90, width: "100%", textAlign: "center", fontFamily: FONT, fontSize: 40, color: "#ffd23f", opacity: lerp(f, [200, 215], [0, 1]), textShadow: "0 4px 0 #000" }}>
+      <div style={{ position: "absolute", bottom: V ? 420 : 90, padding: "0 40px", boxSizing: "border-box", width: "100%", textAlign: "center", fontFamily: FONT, fontSize: V ? 36 : 40, color: "#ffd23f", opacity: lerp(f, [200, 215], [0, 1]), textShadow: "0 4px 0 #000" }}>
         💬 METS A OU B EN COMMENTAIRE + TES PREUVES !
       </div>
       <AbsoluteFill style={{ background: "#000", opacity: fin, justifyContent: "center", alignItems: "center" }}>
         <div style={{ fontFamily: FONT, color: "#fff", fontSize: 80, letterSpacing: 6 }}>À SUIVRE…</div>
-        <div style={{ fontFamily: FONT, color: "#ffd23f", fontSize: 34, letterSpacing: 6, marginTop: 10 }}>ÉPISODE 2 — TON CHOIX DÉCIDE</div>
+        <div style={{ fontFamily: FONT, color: "#ffd23f", fontSize: V ? 30 : 34, letterSpacing: V ? 3 : 6, marginTop: 10, textAlign: "center" }}>ÉPISODE 2 — TON CHOIX DÉCIDE</div>
       </AbsoluteFill>
     </AbsoluteFill>
   );
@@ -243,7 +266,7 @@ export const Fissures: React.FC = () => {
   const f = useCurrentFrame();
   const p = lerp(f, [0, 8], [0, 1], easeOut);
   return (
-    <svg viewBox="0 0 1920 1080" width={1920} height={1080} style={{ position: "absolute", inset: 0 }}>
+    <svg viewBox="0 0 1920 1080" width="100%" height="100%" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
       <g stroke="#fff" strokeWidth={4} fill="none" opacity={0.85} strokeDasharray={3000} strokeDashoffset={3000 * (1 - p)}>
         <path d="M1300 380 L1120 260 L980 300 L760 120 L620 160 M1300 380 L1500 240 L1700 260 L1920 120 M1300 380 L1420 560 L1380 760 L1520 1080 M1300 380 L1120 520 L860 560 L640 760 L420 820 L0 760 M1300 380 L1700 520 L1920 500 M1120 260 L1100 0 M860 560 L900 840 L820 1080" />
         <path d="M1300 380 L1240 300 L1180 330 M1300 380 L1380 330 M1300 380 L1340 450" strokeWidth={8} />

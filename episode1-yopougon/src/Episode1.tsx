@@ -1,5 +1,10 @@
 import React from "react";
-import { AbsoluteFill, Sequence, staticFile, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+
+const useV = () => {
+  const { width, height } = useVideoConfig();
+  return height > width;
+};
 import { Audio } from "@remotion/media";
 import { Cam, Scene } from "./Scene";
 import { Choix, Fissures, InsertHolster, InsertIndices, InsertJordans, TeleCU, Titre } from "./Overlays";
@@ -10,7 +15,10 @@ import { SFX, T, TOTAL, VOIX } from "./timeline";
 // ------------------------------------------------------------------
 // Découpage : chaque plan = intervalle [from, to) + caméra dans le monde
 // ------------------------------------------------------------------
-type Shot = { from: number; to: number; cam: (f: number) => Cam; focus?: "near" | "far"; hideGonmons?: boolean };
+// vcx : centre horizontal propre au format vertical (TikTok)
+type Shot = { from: number; to: number; cam: (f: number) => Cam; vcx?: (f: number) => number; focus?: "near" | "far"; hideGonmons?: boolean };
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+const microbesCx = (f: number) => clamp(lerp(f, [935, 1075], [2150, -300]) + 110, 380, 1650);
 
 const HEAD = {
   yao: [335, 668],
@@ -23,20 +31,20 @@ const HEAD = {
 
 const SHOTS: Shot[] = [
   // SCÈNE 1
-  { from: 0, to: 300, cam: (f) => ({ cx: lerp(f, [0, 300], [960, 1010]), cy: lerp(f, [0, 300], [540, 575]), w: lerp(f, [0, 300], [1920, 1680], ease) }) },
-  { from: 300, to: 510, cam: (f) => ({ cx: lerp(f, [300, 510], [470, 440]), cy: 690, w: lerp(f, [300, 510], [1120, 920], ease) }) },
+  { from: 0, to: 300, cam: (f) => ({ cx: lerp(f, [0, 300], [960, 1010]), cy: lerp(f, [0, 300], [540, 575]), w: lerp(f, [0, 300], [1920, 1680], ease) }), vcx: (f) => lerp(f, [0, 70, 200, 300], [1560, 1500, 900, 520], ease) },
+  { from: 300, to: 510, cam: (f) => ({ cx: lerp(f, [300, 510], [470, 440]), cy: 690, w: lerp(f, [300, 510], [1120, 920], ease) }), vcx: () => 440 },
   { from: 510, to: 615, cam: (f) => ({ cx: HEAD.yao[0] + 20, cy: HEAD.yao[1] + 10, w: lerp(f, [510, 615], [460, 410]) }), focus: "near" },
   { from: 615, to: 800, cam: (f) => ({ cx: HEAD.bravo[0] - 10, cy: HEAD.bravo[1] + 14, w: lerp(f, [615, 800], [480, 420]) }), focus: "near" },
   { from: 800, to: 935, cam: (f) => ({ cx: lerp(f, T.bravoWalk, [600, 1080], ease), cy: lerp(f, T.bravoWalk, [690, 560], ease), w: lerp(f, [800, 935], [1000, 1250]) }) },
   // SCÈNE 2
-  { from: 935, to: 1110, cam: (f) => ({ cx: lerp(f, [935, 1110], [1150, 860], ease), cy: 650, w: 1500, shake: 1.6 }) },
-  { from: 1110, to: 1200, cam: (f) => ({ cx: lerp(f, [1110, 1200], [960, 900]), cy: lerp(f, [1110, 1200], [540, 580]), w: lerp(f, [1110, 1200], [1920, 1750]) }) },
+  { from: 935, to: 1110, cam: (f) => ({ cx: lerp(f, [935, 1110], [1150, 860], ease), cy: 650, w: 1500, shake: 1.6 }), vcx: (f) => (f < 1040 ? microbesCx(f) : lerp(f, [1040, 1070], [microbesCx(1040), 1600], ease)) },
+  { from: 1110, to: 1200, cam: (f) => ({ cx: lerp(f, [1110, 1200], [960, 900]), cy: lerp(f, [1110, 1200], [540, 580]), w: lerp(f, [1110, 1200], [1920, 1750]) }), vcx: () => 760 },
   { from: 1200, to: 1400, cam: (f) => ({ cx: lerp(f, [1200, 1390], [1250, 640], ease), cy: 700, w: lerp(f, [1200, 1400], [1150, 950]), shake: 2.2 }) },
   { from: 1400, to: 1660, cam: (f) => ({ cx: HEAD.blesse[0] - 20, cy: HEAD.blesse[1] + 20, w: lerp(f, [1400, 1660], [500, 400]), shake: 0.8 }), focus: "near" },
   { from: 1695, to: 1800, cam: (f) => ({ cx: 470, cy: 705, w: lerp(f, [1695, 1800], [950, 880]) }) },
   // SCÈNE 3
-  { from: 1800, to: 1888, cam: (f) => ({ cx: 1000, cy: 600, w: 1920, shake: f > 1845 && f < 1865 ? 2 : 0.3 }) },
-  { from: 2040, to: 2112, cam: (f) => ({ cx: lerp(f, [2040, 2112], [1000, 820]), cy: 640, w: 1500 }) },
+  { from: 1800, to: 1888, cam: (f) => ({ cx: 1000, cy: 600, w: 1920, shake: f > 1845 && f < 1865 ? 2 : 0.3 }), vcx: (f) => lerp(f, [1798, 1850], [1600, 1000], easeOut) },
+  { from: 2040, to: 2112, cam: (f) => ({ cx: lerp(f, [2040, 2112], [1000, 820]), cy: 640, w: 1500 }), vcx: (f) => lerp(f, [2040, 2112], [900, 760]) },
   { from: 2112, to: 2160, cam: () => ({ cx: 690, cy: 680, w: 1050, shake: 2.4 }) },
   { from: 2205, to: 2330, cam: (f) => ({ cx: 470, cy: 650, w: lerp(f, [2205, 2330], [800, 700]), rot: -3 }) },
   { from: 2330, to: 2450, cam: (f) => ({ cx: HEAD.g1[0] - 10, cy: HEAD.g1[1] + 30, w: lerp(f, [2330, 2450], [470, 400]), rot: 3 }), focus: "near" },
@@ -100,20 +108,21 @@ const CUES: Cue[] = VOIX.flatMap((v) => {
 
 const SousTitres: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   const c = CUES.filter((q) => f >= q.from && f < q.to + 6).pop();
   if (!c) return null;
   const [nom, col] = NOMS[c.who];
   const narr = c.who === "narrateur";
   return (
-    <div style={{ position: "absolute", left: 0, right: 0, ...(narr ? { top: 170 } : { bottom: 64 }), display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+    <div style={{ position: "absolute", left: 0, right: 0, ...(narr ? { top: V ? 390 : 170 } : { bottom: V ? 470 : 64 }), padding: V ? "0 50px" : 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
       {nom && <div style={{ fontFamily: "'Arial Black', Arial", fontSize: 26, color: col, letterSpacing: 3, textShadow: "0 2px 6px #000" }}>{nom}</div>}
       <div
         style={{
           fontFamily: "'Arial Black', Arial",
-          fontSize: narr ? 46 : 42,
+          fontSize: V ? 46 : narr ? 46 : 42,
           color: "#fff",
           textAlign: "center",
-          maxWidth: 1600,
+          maxWidth: V ? 960 : 1600,
           padding: "6px 22px",
           background: narr ? "rgba(0,0,0,0.0)" : "rgba(0,0,0,0.45)",
           borderRadius: 12,
@@ -130,13 +139,14 @@ const SousTitres: React.FC = () => {
 // ------------------------------------------------------------------
 const Monde: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   const shot = SHOTS.find((s) => f >= s.from && f < s.to);
   if (!shot) return null;
   // petit flash de coupe au début de chaque plan
   const cut = f - shot.from;
   return (
     <AbsoluteFill style={{ background: "#000" }}>
-      <Scene frame={f} cam={shot.cam(f)} focus={shot.focus} hideGonmons={shot.hideGonmons} />
+      <Scene frame={f} cam={V && shot.vcx ? { ...shot.cam(f), cx: shot.vcx(f) } : shot.cam(f)} focus={shot.focus} hideGonmons={shot.hideGonmons} vertical={V} />
       {cut < 3 && shot.from > 0 && <AbsoluteFill style={{ background: "#fff", opacity: 0.08 * (3 - cut) }} />}
     </AbsoluteFill>
   );
@@ -144,18 +154,19 @@ const Monde: React.FC = () => {
 
 const Gel: React.FC = () => {
   const f = useCurrentFrame();
+  const V = useV();
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       <AbsoluteFill style={{ filter: `grayscale(${lerp(f, [0, 10], [0, 0.55])}) contrast(1.35) saturate(1.4) sepia(0.15)`, scale: lerp(f, [0, 10, 430], [1.08, 1, 0.96], easeOut) }}>
-        <Scene frame={T.freeze - 1} cam={FREEZE_CAM} focus="near" />
+        <Scene frame={T.freeze - 1} cam={V ? { ...FREEZE_CAM, w: 420, cy: FREEZE_CAM.cy + 40 } : FREEZE_CAM} focus="near" vertical={V} />
       </AbsoluteFill>
-      <svg viewBox="0 0 1920 1080" width={1920} height={1080} style={{ position: "absolute", inset: 0, mixBlendMode: "multiply", opacity: 0.22 }}>
+      <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, mixBlendMode: "multiply", opacity: 0.22 }}>
         <defs>
           <pattern id="trame2" width="12" height="12" patternUnits="userSpaceOnUse">
             <circle cx="6" cy="6" r="2.6" fill="#000" />
           </pattern>
         </defs>
-        <rect width={1920} height={1080} fill="url(#trame2)" />
+        <rect width="100%" height="100%" fill="url(#trame2)" />
       </svg>
       <AbsoluteFill style={{ border: "18px solid #fff", boxShadow: "inset 0 0 0 8px #000" }} />
       <Fissures />
@@ -169,11 +180,11 @@ const Gel: React.FC = () => {
 const Grain: React.FC = () => {
   const f = useCurrentFrame();
   return (
-    <svg width={1920} height={1080} style={{ position: "absolute", inset: 0, opacity: 0.07, mixBlendMode: "overlay", pointerEvents: "none" }}>
+    <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, opacity: 0.07, mixBlendMode: "overlay", pointerEvents: "none" }}>
       <filter id="grain">
         <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} seed={f % 12} />
       </filter>
-      <rect width={1920} height={1080} filter="url(#grain)" />
+      <rect width="100%" height="100%" filter="url(#grain)" />
     </svg>
   );
 };

@@ -8,6 +8,15 @@ import { L, T } from "./timeline";
 
 export type Cam = { cx: number; cy: number; w: number; shake?: number; rot?: number };
 
+// Format vertical (TikTok) : vue deux fois plus étroite, hauteur 16:9 inversée, bornée au décor
+export const verticalView = (cam: Cam) => {
+  const w = cam.w * 0.5;
+  const h = Math.min((w * 16) / 9, 1440);
+  const w2 = (h * 9) / 16;
+  const cy = Math.min(Math.max(cam.cy, -190 + h / 2), 1270 - h / 2);
+  return { w: w2, h, cx: cam.cx, cy };
+};
+
 const walk = (ph: number, amp = 22, arm = 18): Pose => ({
   lL: [Math.sin(ph) * amp, Math.max(0, -Math.sin(ph)) * 28],
   lR: [-Math.sin(ph) * amp, Math.max(0, Math.sin(ph)) * 28],
@@ -21,7 +30,7 @@ const gest = (f: number, k: number, on: boolean): Pose =>
 
 const talkAny = (f: number) => (id: Parameters<typeof mouth>[1], at: number) => mouth(f, id, at);
 
-export const Scene: React.FC<{ frame: number; cam: Cam; focus?: "near" | "far"; hideGonmons?: boolean }> = ({ frame: f, cam, focus, hideGonmons }) => {
+export const Scene: React.FC<{ frame: number; cam: Cam; focus?: "near" | "far"; hideGonmons?: boolean; vertical?: boolean }> = ({ frame: f, cam, focus, hideGonmons, vertical }) => {
   const m = talkAny(f);
 
   // ---------- éclairage ----------
@@ -131,16 +140,17 @@ export const Scene: React.FC<{ frame: number; cam: Cam; focus?: "near" | "far"; 
 
   // ---------- caméra ----------
   const sh = cam.shake ?? 0;
-  const w = cam.w;
-  const h = (w * 9) / 16;
-  const vx = cam.cx - w / 2 + noise(f / 9, 11) * sh * w * 0.01;
-  const vy = cam.cy - h / 2 + noise(f / 8, 23) * sh * w * 0.01;
+  const vv = vertical ? verticalView(cam) : { w: cam.w, h: (cam.w * 9) / 16, cx: cam.cx, cy: cam.cy };
+  const w = vv.w;
+  const h = vv.h;
+  const vx = vv.cx - w / 2 + noise(f / 9, 11) * sh * cam.w * 0.01;
+  const vy = vv.cy - h / 2 + noise(f / 8, 23) * sh * cam.w * 0.01;
 
   const blurFar = focus === "near" ? "url(#flou4)" : undefined;
   const blurNear = focus === "far" ? "url(#flou4)" : undefined;
 
   return (
-    <svg viewBox={`${vx} ${vy} ${w} ${h}`} width={1920} height={1080} style={{ position: "absolute", inset: 0, rotate: `${(cam.rot ?? 0) + noise(f / 15, 5) * sh * 0.15}deg`, scale: cam.rot ? 1.08 : 1 }} preserveAspectRatio="xMidYMid slice">
+    <svg viewBox={`${vx} ${vy} ${w} ${h}`} width="100%" height="100%" style={{ position: "absolute", inset: 0, rotate: `${(cam.rot ?? 0) + noise(f / 15, 5) * sh * 0.15}deg`, scale: cam.rot ? 1.08 : 1 }} preserveAspectRatio="xMidYMid slice">
       <Defs />
       {/* ===== PLAN LOINTAIN ===== */}
       <g filter={blurFar}>
