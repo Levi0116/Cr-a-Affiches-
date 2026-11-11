@@ -13,6 +13,8 @@ import '@fontsource/poppins/700.css';
 import '@fontsource/kaushan-script/400.css';
 import {JBLVideo} from './Video';
 import {FPS, TOTAL} from './data';
+import {DJIVideo} from './DJIVideo';
+import {D_FPS, D_TOTAL} from './dji-data';
 
 const fontsHandle = delayRender('fonts');
 Promise.all([
@@ -21,7 +23,10 @@ Promise.all([
 ].map((f) => document.fonts.load(f))).then(() => continueRender(fontsHandle));
 
 const Root: React.FC = () => (
-  <Composition id="JBL" component={JBLVideo} durationInFrames={TOTAL} fps={FPS} width={1080} height={1920} />
+  <>
+    <Composition id="JBL" component={JBLVideo} durationInFrames={TOTAL} fps={FPS} width={1080} height={1920} />
+    <Composition id="DJI" component={DJIVideo} durationInFrames={D_TOTAL} fps={D_FPS} width={1080} height={1920} />
+  </>
 );
 
 registerRoot(Root);

@@ -1,10 +1,12 @@
 {
-  "name": "video-jbl",
+  "name": "videos-zstore",
   "version": "1.0.0",
   "description": "",
   "scripts": {
     "studio": "remotion studio src/index.tsx",
-    "render": "remotion render src/index.tsx JBL out/JBL-Zeynab-Store.mp4 --codec=h264 --crf=20"
+    "render": "remotion render src/index.tsx JBL out/JBL-Zeynab-Store.mp4 --codec=h264 --crf=20",
+    "render:dji": "remotion render src/index.tsx DJI out/DJI-Zeynab-Store.mp4 --codec=h264 --crf=20",
+    "voice": "python3 make-voice.py voice-dji.json public/dji/voice"
   },
   "keywords": [],
   "author": "",
