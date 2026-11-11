@@ -29,7 +29,8 @@ lumières néon jaune (dépôt), rouge (maquis) et gyrophare rouge/bleu.
 ```bash
 npm i
 npx remotion studio                      # prévisualiser / ajuster
-npx remotion render Episode1 out/episode1-yopougon.mp4
+npx remotion render Episode1 out/episode1-yopougon.mp4       # 16:9
+npx remotion render Episode1TikTok out/episode1-tiktok.mp4   # 9:16 TikTok
 # régénérer l'audio (ne réécrit pas les fichiers existants) :
 node scripts/generer-audio.mjs && node scripts/lipsync.mjs
 ```
