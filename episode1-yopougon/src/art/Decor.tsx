@@ -182,6 +182,8 @@ export const Tele: React.FC<{ x: number; y: number; frame: number; state: "clip"
       <g>
         <rect x={8} y={58} width={104} height={18} fill="#d50000" />
         <rect x={8} y={20} width={104} height={30} fill="#333" opacity={0.6} />
+        <text x={11} y={70} fontSize={7.5} fontWeight={900} fill="#fff" fontFamily="Arial">BRAQUAGE ANGRÉ 8è TR.</text>
+        <text x={12} y={30} fontSize={6} fontWeight={900} fill="#ff5252" fontFamily="Arial">FLASH INFO</text>
       </g>
     )}
     <path d="M40 0 l-14 -24 M80 0 l14 -24" stroke="#222" strokeWidth={3} />

@@ -56,50 +56,13 @@ const useV = () => {
 };
 const FONT = "'Arial Black', 'Arial', sans-serif";
 
-// Indices à trouver (temps source)
-const INDICES = [
-  { at: 1000, txt: "Les microbes ont vu une patrouille bizarre" },
-  { at: 1662, txt: "Un sac de banque et une montre en or" },
-  { at: 1905, txt: "Braquage à Angré à la télé" },
-  { at: 2162, txt: "Des Jordan neuves sous un treillis" },
-  { at: 2642, txt: "Un holster… vide" },
-];
-const TEASERS = [
-  { from: 1395, to: 1435, txt: "ATTENTION À CE QU'IL PORTE 👀" },
-  { from: 2118, to: 2160, txt: "👀 REGARDE BIEN SES PIEDS…" },
-  { from: 2598, to: 2640, txt: "…ET SA CEINTURE !" },
-  { from: 2968, to: 3028, txt: "ET BRAVO… IL REGARDE QUOI ?" },
-];
-
-const Compteur: React.FC<{ src: number }> = ({ src }) => {
+// Badge permanent : rappelle le défi sans jamais montrer les indices
+const Badge: React.FC<{ src: number }> = ({ src }) => {
   const V = useV();
   if (src >= T.freeze) return null;
-  const n = INDICES.filter((i) => src >= i.at).length;
-  const last = [...INDICES].reverse().find((i) => src >= i.at);
-  const since = last ? src - last.at : 999;
-  const pop = since < 12 ? lerp(since, [0, 4, 12], [1, 1.5, 1], easeOut) : 1;
   return (
-    <>
-      <div style={{ position: "absolute", top: V ? 250 : 40, right: V ? 40 : 50, padding: "12px 24px", borderRadius: 999, background: n ? "#ffd23f" : "rgba(0,0,0,0.65)", border: "4px solid #ffd23f", color: n ? "#111" : "#ffd23f", fontFamily: FONT, fontSize: V ? 38 : 34, scale: pop, transformOrigin: "right center", boxShadow: since < 30 ? "0 0 40px #ffd23f" : "none" }}>
-        🔍 INDICES {n}/5
-      </div>
-      {last && since < 75 && (
-        <div style={{ position: "absolute", top: V ? 340 : 120, right: V ? 40 : 50, left: V ? 40 : undefined, textAlign: "center", padding: "10px 22px", background: "#111", border: "4px solid #ffd23f", borderRadius: 16, color: "#fff", fontFamily: FONT, fontSize: V ? 34 : 30, opacity: lerp(since, [0, 6, 65, 75], [0, 1, 1, 0]), translate: `0 ${lerp(since, [0, 8], [-20, 0], easeOut)}px` }}>
-          +1 INDICE : {last.txt}
-        </div>
-      )}
-    </>
-  );
-};
-
-const Teaser: React.FC<{ src: number }> = ({ src }) => {
-  const V = useV();
-  const t = TEASERS.find((x) => src >= x.from && src < x.to);
-  if (!t) return null;
-  const k = src - t.from;
-  return (
-    <div style={{ position: "absolute", left: 40, right: 40, top: V ? 640 : 300, textAlign: "center", fontFamily: FONT, fontSize: V ? 64 : 70, color: "#fff", textShadow: "0 5px 0 #d50000, 0 0 30px #000", scale: lerp(k, [0, 8], [1.8, 1], easeOut), rotate: "-3deg", opacity: lerp(k, [0, 4], [0, 1]) }}>
-      {t.txt}
+    <div style={{ position: "absolute", top: V ? 250 : 40, right: V ? 40 : 50, padding: "12px 24px", borderRadius: 999, background: "rgba(0,0,0,0.65)", border: "4px solid #ffd23f", color: "#ffd23f", fontFamily: FONT, fontSize: V ? 36 : 32 }}>
+      🔍 5 INDICES CACHÉS
     </div>
   );
 };
@@ -124,19 +87,19 @@ const Accroche: React.FC = () => {
   return (
     <AbsoluteFill>
       <Freeze frame={src}>
-        <Visuels intro={false} sousTitres={false} />
+        <Visuels intro={false} sousTitres={false} cache />
       </Freeze>
       {(f === 45 || f === 46 || f === 89 || f === 90) && <AbsoluteFill style={{ background: "#fff", opacity: 0.35 }} />}
       <AbsoluteFill style={{ background: "#d50000", mixBlendMode: "multiply", opacity: 0.06 + 0.06 * Math.abs(Math.sin(f / 3)) }} />
       <div style={{ position: "absolute", top: V ? 250 : 40, left: 40, right: 40, textAlign: "center" }}>
         <div style={{ display: "inline-block", background: "#d50000", color: "#fff", fontFamily: FONT, fontSize: V ? 64 : 56, padding: "8px 26px", lineHeight: 1.15, rotate: "-2deg" }}>
-          2 FAUX POLICIERS.
-          <br />1 BLESSÉ CACHÉ.
+          1 BLESSÉ CACHÉ.
+          <br />2 « POLICIERS ».
         </div>
         <div style={{ marginTop: 20, color: "#ffd23f", fontFamily: FONT, fontSize: V ? 58 : 48, lineHeight: 1.1, textShadow: "0 4px 0 #000, 0 0 20px #000", scale: lerp(f, [6, 14], [0, 1], easeOut) }}>
-          TROUVE LES 5 INDICES 🔍
+          5 INDICES SONT CACHÉS
           <br />
-          AVANT LA FIN
+          DANS LA VIDÉO 👀 TU LES VOIS ?
         </div>
       </div>
       <div style={{ position: "absolute", bottom: V ? 470 : 70, left: 50, right: 50, textAlign: "center", fontFamily: FONT, fontSize: V ? 44 : 42, color: "#fff", textShadow: "0 3px 0 #000, 0 0 12px #000" }}>
@@ -155,7 +118,7 @@ const Rembobinage: React.FC = () => {
     <AbsoluteFill>
       <AbsoluteFill style={{ filter: `blur(${2 + noise(f, 2) * 2}px) saturate(0.4) contrast(1.3)`, translate: `${noise(f * 3, 4) * 30}px 0` }}>
         <Freeze frame={src}>
-          <Visuels intro={false} sousTitres={false} />
+          <Visuels intro={false} sousTitres={false} cache />
         </Freeze>
       </AbsoluteFill>
       {Array.from({ length: 6 }).map((_, i) => (
@@ -180,11 +143,10 @@ const Histoire: React.FC = () => {
   return (
     <AbsoluteFill>
       <Freeze frame={src}>
-        <Visuels intro={false} />
+        <Visuels intro={false} cache />
       </Freeze>
       {cutIn && <AbsoluteFill style={{ background: "#fff", opacity: 0.12 }} />}
-      <Compteur src={src} />
-      <Teaser src={src} />
+      <Badge src={src} />
       {src < 130 && (
         <div style={{ position: "absolute", left: 50, top: "58%", fontFamily: "monospace", fontSize: 40, color: "#e8d27a", textShadow: "0 0 10px #000" }}>YOPOUGON • 01H30</div>
       )}
@@ -196,7 +158,7 @@ const Histoire: React.FC = () => {
 type Son = { file: string; at: number; dur: number; vol: number; loop?: boolean };
 const DUREES: Record<string, number> = { ambiance: 661, neon: 181, tension: 661, briquet: 61, couteau: 91, course: 91, boitement: 121, grille: 61, casiers: 61, souffle: 181, pneus: 121, coupure: 91, portiere: 91, impact: 61, whoosh: 31, gel: 91, bip: 241 };
 const SONS: Son[] = [
-  ...VOIX.map((v) => ({ file: v.file, at: v.at, dur: (lipsync as Record<string, number[]>)[v.id].length, vol: v.vol })),
+  ...VOIX.map((v) => ({ file: v.file, at: v.at, dur: (lipsync as Record<string, number[]>)[v.id].length, vol: v.id === "07-tele" ? 0.22 : v.vol })),
   ...SFX.map((x) => ({ file: `sfx/${x.f}.mp3`, at: x.at, dur: x.dur ?? DUREES[x.f], vol: x.vol, loop: x.loop })),
 ];
 
@@ -253,11 +215,6 @@ export const EpisodeV2: React.FC = () => {
       </Sequence>
       {SONS.map((s, i) => (
         <SonRemappe key={i} s={s} />
-      ))}
-      {INDICES.map((x, i) => (
-        <Sequence key={i} from={srcToOut(x.at)} durationInFrames={30} name="ding indice">
-          <Audio src={staticFile("sfx/indice.mp3")} volume={0.8} />
-        </Sequence>
       ))}
     </AbsoluteFill>
   );

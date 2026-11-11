@@ -45,4 +45,7 @@ par des enregistrements de comédiens ivoiriens (mêmes noms de fichiers), puis 
 `src/EpisodeV2.tsx` remonte le film pour garder l'attention dès la 1re seconde :
 accroche en flash-forward (le faux gonmon qui menace, l'œil du blessé, Yao qui hésite) avec le défi
 « Trouve les 5 indices avant la fin », rembobinage « 2 minutes plus tôt », passages lents raccourcis,
-compteur d'indices 0/5 → 5/5 avec un son à chaque indice, et teasers avant les indices clés.
+et badge « 5 indices cachés ». Les indices ne sont jamais montrés : pas de zoom, pas d'étiquette,
+la télé « Flash info » reste un détail en arrière-plan (son bas, sans sous-titre). Au spectateur
+de repérer les Jordan neuves, le holster vide, le pick-up sans plaque, le gyrophare sans sirène,
+le sac de banque et la montre en or.

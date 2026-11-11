@@ -234,7 +234,9 @@ export const Person: React.FC<PersonProps> = ({
       {hold === "bag" && (
         <g>
           <path d={`M${p[0] - 4} ${p[1]} v18`} stroke="#5b4a2a" strokeWidth={3} />
+          <rect x={p[0] - 16} y={p[1] + 8} width={22} height={14} fill="#efe8d4" stroke={OUT} strokeWidth={1.2} transform={`rotate(-12 ${p[0]} ${p[1] + 14})`} />
           <rect x={p[0] - 24} y={p[1] + 16} width={44} height={36} rx={6} fill="#8a7650" stroke={OUT} strokeWidth={SW} />
+          <circle cx={p[0] + 2} cy={p[1] + 13} r={3.2} fill="none" stroke="#c62828" strokeWidth={1.4} />
         </g>
       )}
       <circle cx={p[0]} cy={p[1]} r={9.5 * b} fill={look.skin} stroke={OUT} strokeWidth={SW} />

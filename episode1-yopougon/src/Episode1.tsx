@@ -59,6 +59,13 @@ const SHOTS: Shot[] = [
   { from: 3095, to: 3168, cam: (f) => ({ cx: HEAD.yao[0] + 10, cy: HEAD.yao[1] + 6, w: lerp(f, [3095, 3168], [420, 270], ease) }), focus: "near" },
 ];
 
+const SHOTS_CACHES: Shot[] = [
+  { from: 1660, to: 1695, cam: (f) => ({ cx: HEAD.blesse[0] - 20, cy: HEAD.blesse[1] + 30, w: lerp(f, [1660, 1695], [400, 380]), shake: 0.8 }), focus: "near" },
+  { from: 1888, to: 2040, cam: (f) => ({ cx: 520, cy: lerp(f, [1888, 2040], [640, 610]), w: lerp(f, [1888, 2040], [980, 820]) }), vcx: (f) => lerp(f, [1888, 2040], [520, 560]) },
+  { from: 2160, to: 2205, cam: (f) => ({ cx: lerp(f, [2160, 2205], [640, 580]), cy: 700, w: 1000 }), vcx: () => 560 },
+  { from: 2640, to: 2690, cam: (f) => ({ cx: HEAD.yao[0] + 15, cy: HEAD.yao[1] + 10, w: lerp(f, [2640, 2690], [380, 360]) }), focus: "near" },
+];
+
 const FREEZE_CAM: Cam = { cx: HEAD.yao[0] + 10, cy: HEAD.yao[1] + 6, w: 270 };
 
 // ------------------------------------------------------------------
@@ -106,10 +113,10 @@ const CUES: Cue[] = VOIX.flatMap((v) => {
   });
 });
 
-export const SousTitres: React.FC = () => {
+export const SousTitres: React.FC<{ muet?: string[] }> = ({ muet = [] }) => {
   const f = useCurrentFrame();
   const V = useV();
-  const c = CUES.filter((q) => f >= q.from && f < q.to + 6).pop();
+  const c = CUES.filter((q) => f >= q.from && f < q.to + 6 && !muet.includes(q.who)).pop();
   if (!c) return null;
   const [nom, col] = NOMS[c.who];
   const narr = c.who === "narrateur";
@@ -137,10 +144,10 @@ export const SousTitres: React.FC = () => {
 };
 
 // ------------------------------------------------------------------
-const Monde: React.FC = () => {
+const Monde: React.FC<{ cache?: boolean }> = ({ cache }) => {
   const f = useCurrentFrame();
   const V = useV();
-  const shot = SHOTS.find((s) => f >= s.from && f < s.to);
+  const shot = (cache ? [...SHOTS, ...SHOTS_CACHES] : SHOTS).find((s) => f >= s.from && f < s.to);
   if (!shot) return null;
   // petit flash de coupe au début de chaque plan
   const cut = f - shot.from;
@@ -190,9 +197,12 @@ const Grain: React.FC = () => {
 };
 
 // Toute l'image (sans le son) ; intro = carton titre + fondu d'ouverture
-export const Visuels: React.FC<{ intro?: boolean; sousTitres?: boolean }> = ({ intro = true, sousTitres = true }) => (
+// cache = indices dissimulés (aucun insert, télé en arrière-plan, pas de sous-titre télé)
+export const Visuels: React.FC<{ intro?: boolean; sousTitres?: boolean; cache?: boolean }> = ({ intro = true, sousTitres = true, cache = false }) => (
     <AbsoluteFill style={{ background: "#000" }}>
-      <Monde />
+      <Monde cache={cache} />
+      {!cache && (
+        <>
       <Sequence from={1660} durationInFrames={35} name="Insert indices">
         <InsertIndices />
       </Sequence>
@@ -205,6 +215,8 @@ export const Visuels: React.FC<{ intro?: boolean; sousTitres?: boolean }> = ({ i
       <Sequence from={2640} durationInFrames={50} name="Insert holster">
         <InsertHolster />
       </Sequence>
+        </>
+      )}
       <Sequence from={T.freeze} durationInFrames={TOTAL - T.freeze} name="Arrêt sur image">
         <Gel />
       </Sequence>
@@ -216,7 +228,7 @@ export const Visuels: React.FC<{ intro?: boolean; sousTitres?: boolean }> = ({ i
           <Titre />
         </Sequence>
       )}
-      {sousTitres && <SousTitres />}
+      {sousTitres && <SousTitres muet={cache ? ["tele"] : []} />}
       {intro && (
         <Sequence durationInFrames={20}>
           <FonduNoir />
