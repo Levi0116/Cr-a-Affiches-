@@ -84,19 +84,19 @@ export const PRODUCTS_A: AP[] = [
     shots: [P('stage320.png', 469, 1148, 1.0, 1.1, 0.5, 0.5, 4), P('stage320.png', 469, 1148, 1.8, 2.1, 0.5, 0.6, 3.5), P('stage320.png', 469, 1148, 2.0, 1.7, 0.5, 0.2, 3.5)],
   },
   {
-    id: 'onyx8', brand: 'HARMAN KARDON', model: 'ONYX STUDIO 8', kind: 'ENCEINTE DE SALON', price: '160 000', accent: '#c9ced6', photo: 'onyx8.png', cutout: true,
+    id: 'onyx8', brand: 'HARMAN KARDON', model: 'ONYX STUDIO 8', kind: 'ENCEINTE DE SALON', price: '160 000', accent: '#e8d2a8', photo: 'onyx8.png', cutout: true,
     specs: [{k: 'SON', v: 'Stéréo puissant'}, {k: 'AUTONOMIE', v: '8 h'}, {k: 'MODE STÉRÉO', v: '2 enceintes'}, {k: 'POIGNÉE', v: 'Aluminium'}, {k: 'DESIGN', v: 'Rond iconique'}, {k: 'CONNEXION', v: 'Bluetooth'}],
-    shots: [{img: 'hk/onyx8.jpg', w: 960, h: 1280, z0: 1.0, z1: 1.12, cx: 0.4, cy: 0.5, dur: 4}, P('onyx8.png', 1085, 1187, 1.0, 1.1, 0.5, 0.5, 3.5), {img: 'hk/onyx8.jpg', w: 960, h: 1280, z0: 1.5, z1: 1.7, cx: 0.55, cy: 0.5, dur: 3.5}],
+    shots: [P('onyx8.png', 1127, 1127, 1.0, 1.1, 0.5, 0.5, 4), P('onyx8.png', 1127, 1127, 2.0, 2.3, 0.5, 0.62, 3.5), P('onyx8.png', 1127, 1127, 2.2, 1.9, 0.3, 0.2, 3.5)],
   },
   {
-    id: 'aura2', brand: 'HARMAN KARDON', model: 'AURA STUDIO 2', kind: 'ENCEINTE DE SALON', price: '170 000', accent: '#5b9dff', photo: 'aura2.png', cutout: true,
-    specs: [{k: 'SON', v: '360°'}, {k: 'BASSES', v: 'Caisson intégré'}, {k: 'DESIGN', v: 'Dôme transparent'}, {k: 'LUMIÈRE', v: "Éclairage d'ambiance"}, {k: 'PUISSANCE', v: '60 W'}, {k: 'CONNEXION', v: 'Bluetooth'}],
-    shots: [V('hk/aura2.mp4', 360, 640, 0.0, 3.8, {cy: 0.45}), V('hk/aura2.mp4', 360, 640, 6.5, 10.5, {cy: 0.55}), V('hk/aura2.mp4', 360, 640, 12.0, 14.5, {cy: 0.5})],
+    id: 'aura4', brand: 'HARMAN KARDON', model: 'AURA STUDIO 4', kind: 'ENCEINTE DE SALON', price: '170 000', accent: '#5b9dff', photo: 'aura4.jpg', cutout: false, badge: 'NOUVEAU',
+    specs: [{k: 'SON', v: '360°'}, {k: 'BASSES', v: 'Caisson intégré'}, {k: 'DESIGN', v: 'Dôme transparent'}, {k: 'LUMIÈRE', v: "Éclairage d'ambiance"}, {k: 'CONNEXION', v: 'Bluetooth + Auracast'}],
+    shots: [V('audio/src/aura4.mp4', 360, 640, 0.0, 4.5, {cy: 0.4}), V('audio/src/aura4.mp4', 360, 640, 4.5, 9.6, {cy: 0.4}), V('audio/src/aura4.mp4', 360, 640, 10.0, 12.5, {cy: 0.5})],
   },
   {
-    id: 'onyx9', brand: 'HARMAN KARDON', model: 'ONYX STUDIO 9', kind: 'ENCEINTE DE SALON', price: '180 000', accent: '#e8d2a8', photo: 'onyx9.png', cutout: true, badge: 'NOUVEAU',
+    id: 'onyx9', brand: 'HARMAN KARDON', model: 'ONYX STUDIO 9', kind: 'ENCEINTE DE SALON', price: '180 000', accent: '#c9ced6', photo: 'onyx9.png', cutout: true, badge: 'NOUVEAU',
     specs: [{k: 'SON', v: 'Stéréo riche'}, {k: 'CONNEXION', v: 'Bluetooth + Auracast'}, {k: 'AUTONOMIE', v: '8 h'}, {k: 'POIGNÉE', v: 'Aluminium'}, {k: 'DESIGN', v: 'Premium'}],
-    shots: [P('onyx9.png', 1127, 1127, 1.0, 1.1, 0.5, 0.5, 3.5), V('hk/onyx9.mp4', 640, 360, 0.0, 8.3, {fit: 'contain'}), V('hk/onyx9.mp4', 640, 360, 9.8, 12.0, {fit: 'contain'})],
+    shots: [P('onyx9.png', 1085, 1187, 1.0, 1.1, 0.5, 0.5, 3.5), V('hk/onyx9.mp4', 640, 360, 0.0, 8.3, {fit: 'contain'}), V('hk/onyx9.mp4', 640, 360, 9.8, 12.0, {fit: 'contain'})],
   },
   {
     id: 'bose', brand: 'BOSE', model: 'QUIETCOMFORT ULTRA', kind: 'CASQUE PREMIUM', price: '260 000', accent: '#d9b26a', photo: 'bose.png', cutout: true, badge: 'PREMIUM',
