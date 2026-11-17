@@ -6,6 +6,7 @@ Montages verticaux 1080 × 1920 faits à partir des vidéos de la boutique.
 |---|---|---|
 | Spécial JBL (≈ 57 s) | `JBL` | Xtreme 3, Pulse 5, Charge 6, Flip 7 – `src/data.ts`, `src/Video.tsx` |
 | Drones DJI & Xiaomi (≈ 2 min 11) | `DJI` | 9 produits avec prix et voix off – `src/dji-data.ts`, `src/DJIVideo.tsx` |
+| La flotte DJI – 3D (≈ 1 min 34) | `DJI3D` | 8 drones : studio 3D (Three.js), photo puis vidéo, HUD, prix – `src/dji2/` |
 | Harman Kardon (≈ 1 min 20) | `HK` | Onyx Studio 9 et 8, Aura Studio 2 et 3, prix et voix off – `src/hk-data.ts`, `src/HKVideo.tsx` |
 
 ## Modifier les textes et les prix
@@ -31,6 +32,7 @@ npm install
 npm run render       # out/JBL-Zeynab-Store.mp4
 npm run render:dji   # out/DJI-Zeynab-Store.mp4
 npm run render:hk    # out/HarmanKardon-Zeynab-Store.mp4
+npm run render:dji3d # out/Drones-DJI-3D-Zeynab-Store.mp4 (long : scène 3D WebGL)
 npm run studio       # aperçu dans le navigateur
 ```
 

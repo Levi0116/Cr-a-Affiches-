@@ -7,7 +7,8 @@
     "render": "remotion render src/index.tsx JBL out/JBL-Zeynab-Store.mp4 --codec=h264 --crf=20",
     "render:dji": "remotion render src/index.tsx DJI out/DJI-Zeynab-Store.mp4 --codec=h264 --crf=20",
     "voice": "python3 make-voice.py voice-dji.json public/dji/voice",
-    "render:hk": "remotion render src/index.tsx HK out/HarmanKardon-Zeynab-Store.mp4 --codec=h264 --crf=20"
+    "render:hk": "remotion render src/index.tsx HK out/HarmanKardon-Zeynab-Store.mp4 --codec=h264 --crf=20",
+    "render:dji3d": "remotion render src/index.tsx DJI3D out/Drones-DJI-3D-Zeynab-Store.mp4 --codec=h264 --crf=18"
   },
   "keywords": [],
   "author": "",
@@ -15,10 +16,22 @@
   "dependencies": {
     "@fontsource/kaushan-script": "^5.3.0",
     "@fontsource/montserrat": "^5.3.0",
+    "@fontsource/orbitron": "^5.3.0",
     "@fontsource/poppins": "^5.3.0",
+    "@fontsource/rajdhani": "^5.3.0",
+    "@react-three/drei": "^9.114.0",
+    "@react-three/fiber": "^8.17.10",
+    "@react-three/postprocessing": "^2.16.3",
     "@remotion/cli": "^4.0.542",
+    "@remotion/three": "^4.0.542",
+    "@types/three": "^0.169.0",
+    "postprocessing": "^6.36.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "remotion": "^4.0.542"
+    "remotion": "^4.0.542",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "opentype.js": "^1.3.4"
   }
 }
