@@ -1,6 +1,7 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, random} from 'remotion';
-import {FPS2, INTRO2, OUTRO2, PHOTO, PRODUCTS2, P2, sceneLen2, TOTAL2, VO_DELAY, vlen} from './data';
+import {FPS2, INTRO2, OUTRO2, PHOTO, PRODUCTS2, P2, priceAt2, sceneLen2, TOTAL2, VO_DELAY, vlen} from './data';
+import CLIPS from './clips.json';
 import {SHOP} from '../data';
 import {GOLD, Logo, RED, RED_DARK} from '../parts';
 import {Studio3D} from './Studio3D';
@@ -39,7 +40,7 @@ const HUD: React.FC<{p: P2; f: number; len: number}> = ({p, f, len}) => {
   return (
     <AbsoluteFill style={{opacity: a, fontFamily: HUDF, color: '#fff'}}>
       {brackets.map(([x, y], i) => (
-        <div key={i} style={{position: 'absolute', [x ? 'right' : 'left']: 40, [y ? 'bottom' : 'top']: y ? 640 : 250, width: 90, height: 90, borderColor: c, borderStyle: 'solid', borderWidth: 0, [y ? 'borderBottomWidth' : 'borderTopWidth']: 4, [x ? 'borderRightWidth' : 'borderLeftWidth']: 4, filter: `drop-shadow(0 0 6px ${c})`}} />
+        <div key={i} style={{position: 'absolute', [x ? 'right' : 'left']: 40, [y ? 'bottom' : 'top']: y ? 760 : 250, width: 90, height: 90, borderColor: c, borderStyle: 'solid', borderWidth: 0, [y ? 'borderBottomWidth' : 'borderTopWidth']: 4, [x ? 'borderRightWidth' : 'borderLeftWidth']: 4, filter: `drop-shadow(0 0 6px ${c})`}} />
       ))}
       {/* viseur central */}
       <svg width="1080" height="1920" style={{position: 'absolute', inset: 0}}>
@@ -94,33 +95,40 @@ const Header: React.FC<{p: P2; index: number; f: number}> = ({p, index, f}) => {
 /* Fiche technique dans un panneau en verre en bas */
 const SpecPanel: React.FC<{p: P2; f: number; len: number}> = ({p, f, len}) => {
   const a = sp(f, 4, 16);
-  const priceAt = Math.round(len * 0.55);
+  const priceAt = priceAt2(p) - PHOTO;
+  const step = Math.max(14, Math.floor((priceAt - 30) / p.specs.length));
   const pr = interpolate(f, [priceAt, priceAt + 10], [0, 1], {...clamp, easing: Easing.out(Easing.back(2.2))});
   const shock = interpolate(f, [priceAt + 4, priceAt + 22], [0, 1], clamp);
   const shake = f >= priceAt + 4 && f < priceAt + 14 ? Math.sin(f * 7) * (priceAt + 14 - f) * 1.2 : 0;
   return (
-    <div style={{position: 'absolute', left: 30, right: 30, bottom: 40, height: 590, transform: `translateY(${(1 - a) * 700}px) translateX(${shake}px)`}}>
-      <div style={{position: 'absolute', inset: 0, borderRadius: 36, background: 'linear-gradient(180deg, rgba(8,12,20,.55), rgba(4,6,10,.88))', backdropFilter: 'blur(14px)', border: `2px solid ${p.accent}88`, boxShadow: `0 0 40px ${p.accent}44, inset 0 1px 0 rgba(255,255,255,.15)`}} />
-      <div style={{position: 'absolute', left: 36, top: 26, right: 36, display: 'flex', flexDirection: 'column', gap: 14}}>
+    <div style={{position: 'absolute', left: 30, right: 30, bottom: 36, height: 700, transform: `translateY(${(1 - a) * 800}px) translateX(${shake}px)`}}>
+      <div style={{position: 'absolute', inset: 0, borderRadius: 36, background: 'linear-gradient(180deg, rgba(8,12,20,.6), rgba(4,6,10,.9))', backdropFilter: 'blur(14px)', border: `2px solid ${p.accent}88`, boxShadow: `0 0 40px ${p.accent}44, inset 0 1px 0 rgba(255,255,255,.15)`}} />
+      <div style={{position: 'absolute', left: 30, top: 22, right: 30, display: 'flex', alignItems: 'center', gap: 14}}>
+        <div style={{font: `700 24px ${TECH}`, color: p.accent, letterSpacing: 6}}>FICHE TECHNIQUE</div>
+        <div style={{flex: 1, height: 2, background: `linear-gradient(90deg, ${p.accent}, transparent)`, transform: `scaleX(${a})`, transformOrigin: '0 50%'}} />
+      </div>
+      <div style={{position: 'absolute', left: 30, top: 68, right: 30, display: 'flex', flexDirection: 'column', gap: 8}}>
         {p.specs.map((s, i) => {
-          const t = sp(f, 14 + i * 12, 14);
-          const chars = Math.floor(interpolate(f, [16 + i * 12, 34 + i * 12], [0, s.v.length], clamp));
+          const st = 12 + i * step;
+          const t = sp(f, st, 12);
+          const chars = Math.floor(interpolate(f, [st + 2, st + 16], [0, s.v.length], clamp));
+          const active = f >= st && f < st + step;
           return (
-            <div key={i} style={{display: 'flex', alignItems: 'center', gap: 20, opacity: t, transform: `translateX(${(1 - t) * 80}px)`}}>
-              <div style={{width: 14, height: 54, background: p.accent, boxShadow: `0 0 14px ${p.accent}`, transform: `scaleY(${t})`}} />
-              <div style={{font: `700 26px ${TECH}`, color: p.accent, width: 240, letterSpacing: 2}}>{s.k}</div>
-              <div style={{font: `700 46px ${HUDF}`, color: '#fff', whiteSpace: 'nowrap'}}>{s.v.slice(0, chars)}<span style={{opacity: chars < s.v.length && f % 10 < 5 ? 1 : 0, color: p.accent}}>▌</span></div>
+            <div key={i} style={{display: 'flex', alignItems: 'center', gap: 18, height: 62, padding: '0 14px', borderRadius: 14, background: active ? `linear-gradient(90deg, ${p.accent}33, transparent)` : 'transparent', opacity: t, transform: `translateX(${(1 - t) * 80}px)`}}>
+              <div style={{width: 10, height: 44, background: p.accent, boxShadow: `0 0 14px ${p.accent}`, transform: `scaleY(${t})`}} />
+              <div style={{font: `700 24px ${TECH}`, color: p.accent, width: 250, letterSpacing: 2}}>{s.k}</div>
+              <div style={{font: `700 44px ${HUDF}`, color: '#fff', whiteSpace: 'nowrap'}}>{s.v.slice(0, chars)}<span style={{opacity: chars < s.v.length && f % 10 < 5 ? 1 : 0, color: p.accent}}>▌</span></div>
             </div>
           );
         })}
       </div>
       {/* prix */}
-      <div style={{position: 'absolute', left: 0, right: 0, bottom: 30, display: 'flex', justifyContent: 'center'}}>
+      <div style={{position: 'absolute', left: 0, right: 0, bottom: 26, display: 'flex', justifyContent: 'center'}}>
         <div style={{position: 'absolute', left: '50%', top: '50%', width: 300, height: 300, marginLeft: -150, marginTop: -150, borderRadius: '50%', border: `6px solid ${GOLD}`, transform: `scale(${shock * 4})`, opacity: (1 - shock) * 0.8}} />
-        <div style={{display: 'flex', alignItems: 'baseline', gap: 18, padding: '18px 46px 22px', borderRadius: 26, background: `linear-gradient(180deg, #ff2a44 0%, ${RED} 45%, ${RED_DARK} 100%)`, border: `4px solid ${GOLD}`,
+        <div style={{display: 'flex', alignItems: 'baseline', gap: 18, padding: '14px 46px 18px', borderRadius: 26, background: `linear-gradient(180deg, #ff2a44 0%, ${RED} 45%, ${RED_DARK} 100%)`, border: `4px solid ${GOLD}`,
           boxShadow: `0 0 50px ${RED}aa, 0 20px 40px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.35)`, transform: `perspective(800px) rotateX(${(1 - pr) * 70}deg) scale(${0.3 + pr * 0.7})`, opacity: Math.min(1, pr * 3)}}>
-          <div style={{font: `900 ${p.price.length > 8 ? 104 : 120}px/1 Montserrat`, letterSpacing: -4, background: 'linear-gradient(180deg,#fff 0%,#fff 55%,#ffd9a0 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 5px 0 rgba(0,0,0,.35))'}}>{p.price}</div>
-          <div style={{font: `900 48px Montserrat`, color: GOLD}}>FCFA</div>
+          <div style={{font: `900 ${p.price.length > 8 ? 100 : 112}px/1 Montserrat`, letterSpacing: -4, background: 'linear-gradient(180deg,#fff 0%,#fff 55%,#ffd9a0 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 5px 0 rgba(0,0,0,.35))'}}>{p.price}</div>
+          <div style={{font: `900 46px Montserrat`, color: GOLD}}>FCFA</div>
         </div>
       </div>
     </div>
@@ -130,23 +138,31 @@ const SpecPanel: React.FC<{p: P2; f: number; len: number}> = ({p, f, len}) => {
 /* Passage vidéo : clips plein écran, étalonnage, poussée caméra */
 const Footage: React.FC<{p: P2; len: number}> = ({p, len}) => {
   const f = useCurrentFrame();
-  const per = Math.ceil(len / p.clips.length);
+  const durs = p.clips.map((c) => (CLIPS as Record<string, number>)[c] ?? 3);
+  const total = durs.reduce((a, b) => a + b, 0);
+  const rate = Math.max(0.55, Math.min(1, (total * FPS2) / len));
+  const starts: number[] = [];
+  let acc = 0;
+  const lens = durs.map((d, i) => {
+    const l = i === durs.length - 1 ? Math.max(1, len - acc) : Math.round((d / rate) * FPS2);
+    starts.push(acc);
+    acc += l;
+    return l;
+  });
   const zoom = interpolate(f, [0, len], [1.0, 1.12]);
   return (
     <AbsoluteFill style={{overflow: 'hidden'}}>
-      {p.clips.map((c, i) => (
-        <Sequence key={c} from={i * per} durationInFrames={i === p.clips.length - 1 ? len - i * per : per} layout="none">
+      {p.clips.map((c, i) => (starts[i] < len ? (
+        <Sequence key={c} from={starts[i]} durationInFrames={Math.min(lens[i], len - starts[i])} layout="none">
           <AbsoluteFill style={{transform: `scale(${zoom})`}}>
-            <OffthreadVideo src={staticFile(`dji2/clips/${c}`)} muted style={{width: '100%', height: '100%', objectFit: 'cover', filter: 'contrast(1.12) saturate(1.18) brightness(.98)'}} />
+            <OffthreadVideo src={staticFile(`dji2/clips/${c}`)} muted playbackRate={rate} style={{width: '100%', height: '100%', objectFit: 'cover', filter: 'contrast(1.12) saturate(1.18) brightness(.98)'}} />
           </AbsoluteFill>
         </Sequence>
-      ))}
+      ) : null))}
       {/* étalonnage teal & orange */}
       <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,60,90,.35) 0%, rgba(0,0,0,0) 40%, rgba(255,120,40,.12) 75%, rgba(0,0,0,.55) 100%)', mixBlendMode: 'soft-light'}} />
-      <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,.6) 100%)'}} />
-      {/* flash de coupe entre deux plans */}
-      {p.clips.slice(1).map((_, i) => {
-        const at = (i + 1) * per;
+      <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 50%, rgba(0,0,0,.65) 100%)'}} />
+      {starts.slice(1).filter((at) => at < len).map((at, i) => {
         const o = interpolate(f, [at - 3, at, at + 6], [0, 0.85, 0], clamp);
         return <AbsoluteFill key={i} style={{background: '#fff', opacity: o}} />;
       })}
@@ -300,7 +316,7 @@ export const DJI2Video: React.FC = () => {
   let at = INTRO2;
   const scenes = PRODUCTS2.map((p, i) => {
     const len = sceneLen2(p);
-    const priceAt = PHOTO + Math.round((len - PHOTO) * 0.55);
+    const priceAt = priceAt2(p);
     const el = (
       <Sequence key={p.id} from={at} durationInFrames={len}>
         <ProductScene p={p} index={i} len={len} />
