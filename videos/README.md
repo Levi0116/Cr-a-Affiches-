@@ -6,7 +6,7 @@ Montages verticaux 1080 × 1920 faits à partir des vidéos de la boutique.
 |---|---|---|
 | Spécial JBL (≈ 57 s) | `JBL` | Xtreme 3, Pulse 5, Charge 6, Flip 7 – `src/data.ts`, `src/Video.tsx` |
 | Drones DJI & Xiaomi (≈ 2 min 11) | `DJI` | 9 produits avec prix et voix off – `src/dji-data.ts`, `src/DJIVideo.tsx` |
-| La flotte DJI – 3D (≈ 1 min 34) | `DJI3D` | 8 drones : studio 3D (Three.js), photo puis vidéo, HUD, prix – `src/dji2/` |
+| La flotte DJI – 3D (≈ 2 min 10) | `DJI3D` | 8 drones : studio 3D (Three.js), photo puis vidéo, HUD, prix – `src/dji2/` |
 | Harman Kardon (≈ 1 min 20) | `HK` | Onyx Studio 9 et 8, Aura Studio 2 et 3, prix et voix off – `src/hk-data.ts`, `src/HKVideo.tsx` |
 
 ## Modifier les textes et les prix
@@ -39,3 +39,14 @@ npm run studio       # aperçu dans le navigateur
 `remotion.config.ts` pointe vers le Chromium de l'environnement cloud ; supprime la ligne
 `setBrowserExecutable` pour utiliser celui que Remotion télécharge sur ton ordinateur.
 Les musiques (`public/music.m4a`, `public/dji/music.m4a`) sont des rythmes générés, libres de droits.
+
+### Voix gratuite (sans ElevenLabs)
+
+La vidéo `DJI3D` utilise la voix française SVOX Pico (gratuite, hors ligne) :
+
+```bash
+sudo apt-get install libttspico-utils
+bash make-voice-pico.sh voice-dji2-pico.json public/dji2/vo src/dji2-voice.json
+```
+
+Les textes ElevenLabs correspondants sont dans `voice-dji2.json` (pour repasser à la voix « aude roxane »).
