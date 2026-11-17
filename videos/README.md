@@ -50,3 +50,12 @@ bash make-voice-pico.sh voice-dji2-pico.json public/dji2/vo src/dji2-voice.json
 ```
 
 Les textes ElevenLabs correspondants sont dans `voice-dji2.json` (pour repasser à la voix « aude roxane »).
+
+## Vidéo « Sound Collection » (audio : JBL, Harman Kardon, Bose, Apple)
+
+- Données (produits, prix, caractéristiques, plans vidéo) : `src/audio/data.ts`
+- Voix off gratuite : `python3 -I tools/pico-audio.py && bash make-voice-pico.sh voice-audio-pico.json public/audio/vo src/audio-voice.json`
+  (texte ElevenLabs prêt dans `voice-audio.json` : `python3 make-voice.py voice-audio.json public/audio/vo --force`, puis recalculer les durées)
+- Musique originale : `python3 -I tools/music-audio.py public/audio/music.wav 275`, puis `python3 -I tools/spectrum.py public/audio/music.wav src/audio/spectrum.json 30`
+- Photos détourées : `python3 -I tools/cutout2.py photo.jpg public/audio/photos/x.png [all]`
+- Rendu : `npm run render:audio` (15 s par produit, ~4 min 20)

@@ -8,6 +8,7 @@
     "render:dji": "remotion render src/index.tsx DJI out/DJI-Zeynab-Store.mp4 --codec=h264 --crf=20",
     "voice": "python3 make-voice.py voice-dji.json public/dji/voice",
     "render:hk": "remotion render src/index.tsx HK out/HarmanKardon-Zeynab-Store.mp4 --codec=h264 --crf=20",
+    "render:audio": "remotion render src/index.tsx AUDIO out/Audio-Sound-Collection-Zeynab-Store.mp4 --codec=h264 --crf=18",
     "render:dji3d": "remotion render src/index.tsx DJI3D out/Drones-DJI-3D-Zeynab-Store.mp4 --codec=h264 --crf=18"
   },
   "keywords": [],
@@ -19,6 +20,7 @@
     "@fontsource/orbitron": "^5.3.0",
     "@fontsource/poppins": "^5.3.0",
     "@fontsource/rajdhani": "^5.3.0",
+    "@fontsource/unbounded": "^5.3.0",
     "@react-three/drei": "^9.114.0",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",
