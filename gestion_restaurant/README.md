@@ -17,10 +17,27 @@ Cette première livraison couvre l'**Étape 1 (MVP)** du cahier des charges (pha
 | 4 | Administration : catégories, articles (prix, type, unités par casier, seuil, photo), zones et tables, employés (rôle, PIN, désactivation), paramètres | ✅ |
 | 5 | Plan de salle temps réel (vert/orange/bleu), commande (catégories, favoris, panier, notes, articles indisponibles grisés, « reste 3 »), validation en écriture groupée, tours horodatés, demande d'addition, transfert, fusion, demande d'annulation, à emporter, indicateur en ligne / hors ligne | ✅ |
 | 6 | Caisse : tables ouvertes en temps réel avec détail des tours, alerte « addition demandée », pré-addition, facture finale numérotée FAC-AAAA-NNNNNN, encaissement et monnaie, partage par article ou en parts égales, ardoises, duplicata, ouverture et clôture de caisse, stock des boissons | ✅ |
-| 7 | Stock : livraisons en casiers avec coût moyen, pertes, inventaire soumis à validation, portions du jour, disponibilité forcée, historique | ✅ en partie (fiches techniques, alertes par notification et consignes : à faire) |
+| 7 | Stock : livraisons en casiers avec coût moyen, pertes, inventaire soumis à validation, portions du jour, disponibilité forcée, historique, **fiches techniques des plats** (déduction des ingrédients, portions possibles), **consignes** (vides à rendre) | ✅ (alertes par notification : à faire) |
 | 8 | Validations admin (annulations, remises, offerts, ajustements), journal d'audit filtrable, avoirs AV-AAAA-NNNNNN | ✅ (notification sur le téléphone : à faire) |
-| 9 | Tableau de bord du jour (CA, meilleures ventes, ventes par serveuse, stock sous le seuil, ardoises), saisie des dépenses | ✅ en partie (rapports semaine/mois, Cloud Function `rapportsJour`, export PDF/Excel : à faire) |
+| 9 | Tableau de bord du jour, dépenses, **rapports jour / semaine / mois** comparés à la période précédente (CA, panier moyen, marge, bénéfice estimé, ventes par heure, par article et catégorie, serveuses, articles non vendus), **export Excel et PDF** | ✅ (Cloud Function `rapportsJour` : à faire) |
 | 10 | Tests automatiques des calculs et d'une soirée simulée | ✅ en partie (tests des règles avec l'émulateur, scénarios hors ligne réels : à faire) |
+
+## Design et identité visuelle
+
+L'application porte une identité **provisoire** nommée « Braise » : terre cuite, or du mil, nuit d'ébène et indigo, titres en Fraunces, texte en Outfit, et un motif géométrique original inspiré des tissages d'Afrique de l'Ouest, dessiné par le code (aucune image).
+
+**Pour appliquer la charte du restaurant, un seul fichier à modifier : `lib/theme/identite.dart`.**
+
+| Élément | Où le changer |
+|---|---|
+| Couleurs (principale, accent, fond, états des tables…) | `identite.dart`, codes `0xFFRRGGBB` |
+| Polices | déposer les `.ttf` dans `assets/fonts/`, les déclarer dans `pubspec.yaml`, mettre leur nom dans `identite.dart` |
+| Logo | déposer l'image dans `assets/images/`, l'ajouter dans `pubspec.yaml` (rubrique `assets`), indiquer `logoAsset` |
+| Motif décoratif | `motif: false` pour le retirer |
+| Arrondis | `arrondi` |
+| Animations | `vitesseAnimations` (1 = normal, 0 = aucune) |
+
+Animations : montants qui comptent jusqu'à leur nouvelle valeur, rebond des boutons à l'appui, apparition des cartes en cascade, halo qui respire sur les tables en attente de paiement, secousse du code PIN faux, bulle de quantité sur les articles, coche « Envoyé en caisse », tampon « PAYÉE », barres de graphiques qui poussent, transitions d'écran. Le réglage « réduire les animations » de l'appareil est respecté.
 
 ## Essayer tout de suite (mode démonstration)
 
@@ -91,7 +108,8 @@ Pour un PDF à envoyer par WhatsApp, choisir « Enregistrer au format PDF » com
 
 ```
 lib/
-  core/        calculs (totaux, remise, TVA, monnaie, parts, casiers, coût moyen, numéros), PIN, formats
+  core/        calculs (totaux, remise, TVA, monnaie, parts, casiers, coût moyen, numéros), fiches techniques, rapports, PIN, formats
+  theme/       identité visuelle (identite.dart), thème, motif, animations, icônes de catégories
   models/      modèle de données Firestore (section 7)
   services/    accès Firestore et règles métier : commande, caisse, stock, admin ; ticket 80 mm ; impression ; données de démo
   state/       providers Riverpod (flux temps réel)
@@ -107,4 +125,4 @@ firestore.rules, firebase.json, .firebaserc
 flutter test
 ```
 
-17 tests : calculs de facturation, et scénarios complets sur une base Firestore simulée (`fake_cloud_firestore`).
+23 tests : calculs de facturation, scénarios complets sur une base Firestore simulée (`fake_cloud_firestore`), fiches techniques, consignes, rapports et export Excel.

@@ -4,11 +4,7 @@ import 'package:gestion_restaurant/core/format.dart';
 import 'package:gestion_restaurant/core/pin.dart';
 
 void main() {
-  const lignes = [
-    LigneCalcul(3, 700),
-    LigneCalcul(1, 4000),
-    LigneCalcul(2, 500, annulee: true),
-  ];
+  const lignes = [LigneCalcul(3, 700), LigneCalcul(1, 4000), LigneCalcul(2, 500, annulee: true)];
 
   test('sous-total ignore les lignes annulées', () {
     expect(sousTotal(lignes), 6100);

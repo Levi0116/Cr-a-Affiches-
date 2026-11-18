@@ -8,3 +8,5 @@ String fcfa(num montant) => '${_f.format(montant.round()).replaceAll(' ', ' ')
 String heure(DateTime d) => DateFormat('HH:mm').format(d);
 String dateHeure(DateTime d) => DateFormat('dd/MM/yyyy HH:mm').format(d);
 String dateJour(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+String dateJourFr(DateTime d) => DateFormat('d MMMM yyyy', 'fr').format(d);
+String moisFr(DateTime d) => DateFormat('MMMM yyyy', 'fr').format(d);

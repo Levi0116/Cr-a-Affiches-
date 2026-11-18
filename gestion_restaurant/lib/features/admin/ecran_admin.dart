@@ -13,6 +13,7 @@ import '../../widgets/commun.dart';
 import '../caisse/ecran_caisse.dart';
 import '../salle/ecran_salle.dart';
 import '../stock/ecran_stock.dart';
+import 'rapports.dart';
 
 /// Espace administrateur (section 3.4) : tout, plus les validations.
 class EcranAdmin extends ConsumerStatefulWidget {
@@ -30,6 +31,7 @@ class _EcranAdminState extends ConsumerState<EcranAdmin> {
     final pages = <(IconData, String, Widget)>[
       (Icons.dashboard, 'Tableau de bord', const _TableauDeBord()),
       (Icons.verified, 'Validations${attente > 0 ? ' ($attente)' : ''}', const _Validations()),
+      (Icons.insights_rounded, 'Rapports', const EcranRapports()),
       (Icons.point_of_sale, 'Caisse', const EcranCaisse(avecBarre: false)),
       (Icons.table_restaurant, 'Salle', const EcranSalle(avecBarre: false)),
       (Icons.inventory_2, 'Stock', const EcranStock(avecBarre: false)),

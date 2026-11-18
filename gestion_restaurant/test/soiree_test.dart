@@ -50,8 +50,9 @@ void main() {
   });
 
   test('commande, tours, addition, facture, encaissement, clôture', () async {
-    final j = await caisse.journeeOuverte() ?? JourneeCaisse.fromDoc(
-        await db.journeesCaisse.doc(await caisse.ouvrirCaisse(koffi, 20000)).get());
+    final j =
+        await caisse.journeeOuverte() ??
+        JourneeCaisse.fromDoc(await db.journeesCaisse.doc(await caisse.ouvrirCaisse(koffi, 20000)).get());
 
     final s = await commander(awa, 't-1', {'a-flag': 3, 'a-poulet': 1});
     expect((await table('t-1')).statut, StatutTable.occupee);
@@ -96,7 +97,10 @@ void main() {
     expect(jc.totalTheorique, 20000 + 7100 + 1400);
     expect(jc.ecart, -100);
     expect(jc.verrouillee, isTrue);
-    expect(() => caisse.encaisser(caissier: koffi, facture: f, montantRecu: 1, journee: jc), throwsA(isA<ErreurMetier>()));
+    expect(
+      () => caisse.encaisser(caissier: koffi, facture: f, montantRecu: 1, journee: jc),
+      throwsA(isA<ErreurMetier>()),
+    );
     expect(ticketCloture(await resto(), jc, nbFactures: 2), contains('ÉCART'));
   });
 
@@ -121,10 +125,21 @@ void main() {
 
   test('remise validée, partage en parts égales et partage par article', () async {
     final s = await commander(awa, 't-4', {'a-poisson': 2, 'a-coca': 2}); // 10 000
-    await caisse.demanderRemise(koffi, await session(s), type: TypeRemise.pourcentage, valeur: 10, motif: 'Client fidèle');
+    await caisse.demanderRemise(
+      koffi,
+      await session(s),
+      type: TypeRemise.pourcentage,
+      valeur: 10,
+      motif: 'Client fidèle',
+    );
     final dem = DemandeValidation.fromDoc((await db.demandesValidation.get()).docs.single);
     await admin.traiterDemande(patron, dem, true);
-    final ids = await caisse.emettreFactures(caissier: koffi, session: await session(s), restaurant: await resto(), nombreParts: 3);
+    final ids = await caisse.emettreFactures(
+      caissier: koffi,
+      session: await session(s),
+      restaurant: await resto(),
+      nombreParts: 3,
+    );
     final fs = [for (final id in ids) await facture(id)];
     expect(fs.map((f) => f.total), [3000, 3000, 3000]);
     expect(fs.map((f) => f.partie), ['1/3', '2/3', '3/3']);
@@ -133,7 +148,12 @@ void main() {
     final s2 = await commander(fatou, 't-5', {'a-flag': 1, 'a-garba': 1});
     final lignes = await caisse.lignesSession(s2);
     final idFlag = lignes.firstWhere((l) => l.idArticle == 'a-flag').id;
-    final p1 = await caisse.emettreFactures(caissier: koffi, session: await session(s2), restaurant: await resto(), idsLignes: {idFlag});
+    final p1 = await caisse.emettreFactures(
+      caissier: koffi,
+      session: await session(s2),
+      restaurant: await resto(),
+      idsLignes: {idFlag},
+    );
     expect((await facture(p1.single)).total, 700);
     expect((await session(s2)).statut, StatutSession.ouverte);
     final p2 = await caisse.emettreFactures(caissier: koffi, session: await session(s2), restaurant: await resto());
@@ -146,7 +166,12 @@ void main() {
     final j = JourneeCaisse.fromDoc(await db.journeesCaisse.doc(jid).get());
     final s = await commander(awa, 't-6', {'a-choukouya': 1});
     final ids = await caisse.emettreFactures(caissier: koffi, session: await session(s), restaurant: await resto());
-    await caisse.mettreEnArdoise(caissier: koffi, facture: await facture(ids.single), client: 'M. Kouassi', telephone: '0102030405');
+    await caisse.mettreEnArdoise(
+      caissier: koffi,
+      facture: await facture(ids.single),
+      client: 'M. Kouassi',
+      telephone: '0102030405',
+    );
     expect((await session(s)).statut, StatutSession.credit);
     expect((await table('t-6')).statut, StatutTable.libre);
     final a = Ardoise.fromDoc((await db.ardoises.get()).docs.single);
@@ -173,7 +198,14 @@ void main() {
     final fanta = await art('a-fanta');
     expect(fanta.vendable, isFalse);
     expect(() => commander(awa, 't-10', {'a-fanta': 1}), throwsA(isA<ErreurMetier>()));
-    await stock.saisirLivraison(a: moussa, article: fanta, casiers: 2, unites: 4, prixAchatUnitaire: 320, fournisseur: 'Solibra');
+    await stock.saisirLivraison(
+      a: moussa,
+      article: fanta,
+      casiers: 2,
+      unites: 4,
+      prixAchatUnitaire: 320,
+      fournisseur: 'Solibra',
+    );
     final f2 = await art('a-fanta');
     expect(f2.stock, 52);
     expect(f2.coutMoyen, 320);
@@ -209,7 +241,11 @@ void main() {
     expect(num, 'AV-${DateTime.now().year}-000001');
 
     final flag = await art('a-flag');
-    await admin.enregistrerArticle(patron, Article(id: flag.id, nom: flag.nom, idCategorie: flag.idCategorie, prixVente: 800), ancien: flag);
+    await admin.enregistrerArticle(
+      patron,
+      Article(id: flag.id, nom: flag.nom, idCategorie: flag.idCategorie, prixVente: 800),
+      ancien: flag,
+    );
     expect((await art('a-flag')).prixVente, 800);
     expect((await db.historiquePrix.get()).docs.single.data()['ancienPrix'], 700);
     // La facture déjà émise garde l'ancien prix.
@@ -271,7 +307,13 @@ void main() {
     expect((await art('a-castel')).vides, 6);
     expect((await art('a-eau')).vides, 0); // eau en plastique : pas consignée
     await stock.saisirLivraison(
-        a: moussa, article: await art('a-castel'), casiers: 1, prixAchatUnitaire: 520, fournisseur: 'Solibra', videsRendus: 4);
+      a: moussa,
+      article: await art('a-castel'),
+      casiers: 1,
+      prixAchatUnitaire: 520,
+      fournisseur: 'Solibra',
+      videsRendus: 4,
+    );
     expect((await art('a-castel')).vides, 2);
     expect((await art('a-castel')).stock, 36 - 6 + 12);
     await stock.corrigerVides(moussa, await art('a-castel'), 1, 'Bouteille cassée');
