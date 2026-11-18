@@ -41,52 +41,52 @@ export const PRODUCTS_A: AP[] = [
   {
     id: 'mic', brand: 'JBL', model: 'WIRELESS MIC', kind: 'MICROS SANS FIL', price: '90 000', accent: '#ff9a1a', photo: 'mic.png', cutout: true, badge: 'KARAOKÉ',
     specs: [{k: 'PACK', v: '2 micros + récepteur'}, {k: 'BRANCHEMENT', v: "Prêt à l'emploi"}, {k: 'COMPATIBLE', v: 'JBL PartyBox'}, {k: 'AUTONOMIE', v: '6 h'}, {k: 'RECHARGE', v: 'USB-C'}, {k: 'USAGE', v: 'Karaoké · soirées'}],
-    shots: [P('mic.png', 855, 930, 1.0, 1.12, 0.5, 0.5, 4), P('mic.png', 855, 930, 2.2, 2.5, 0.4, 0.25, 3.5), P('mic.png', 855, 930, 2.4, 2.1, 0.15, 0.85, 3.5)],
+    shots: [V('audio/src/mic.mp4', 720, 1280, 0.0, 3.0, {cy: 0.5}), V('audio/src/mic.mp4', 720, 1280, 3.6, 6.0, {cy: 0.5}), V('audio/src/mic.mp4', 720, 1280, 6.4, 8.6, {cy: 0.5}), V('audio/src/mic.mp4', 720, 1280, 8.8, 10.4, {cy: 0.5})],
   },
   {
     id: 'flip7', brand: 'JBL', model: 'FLIP 7', kind: 'ENCEINTE PORTABLE', price: '95 000', accent: '#ff2a4d', photo: 'flip7.png', cutout: true, badge: 'NOUVEAU',
     specs: [{k: 'SON', v: 'AI Sound Boost'}, {k: 'ÉTANCHE', v: 'IP68'}, {k: 'ROBUSTE', v: 'Résiste aux chutes'}, {k: 'AUTONOMIE', v: "Jusqu'à 16 h"}, {k: 'ACCESSOIRE', v: 'Mousqueton amovible'}, {k: 'CONNEXION', v: 'Auracast'}],
-    shots: [V('charge6-flip7.mp4', 360, 640, 2.0, 4.0), V('charge6-flip7.mp4', 360, 640, 9.6, 11.0), V('charge6-flip7.mp4', 360, 640, 12.6, 14.7)],
+    shots: [V('audio/src/flip7.mp4', 720, 1280, 8.1, 9.7, {cy: 0.5}), V('audio/src/flip7.mp4', 720, 1280, 11.6, 12.4, {cy: 0.5}), V('audio/src/flip7.mp4', 720, 1280, 13.3, 15.0, {cy: 0.5}), V('audio/src/flip7.mp4', 720, 1280, 17.0, 18.5, {cy: 0.5}), V('audio/src/flip7.mp4', 720, 1280, 21.0, 22.4, {cy: 0.5}), V('audio/src/flip7.mp4', 720, 1280, 24.9, 25.9, {cy: 0.5})],
   },
   {
     id: 'charge6', brand: 'JBL', model: 'CHARGE 6', kind: 'ENCEINTE PORTABLE', price: '130 000', accent: '#ff8a00', photo: 'charge6.png', cutout: true,
     specs: [{k: 'AUTONOMIE', v: "Jusqu'à 28 h"}, {k: 'ÉTANCHE', v: 'IP68'}, {k: 'ROBUSTE', v: 'Résiste aux chutes'}, {k: 'SON', v: 'AI Sound Boost'}, {k: 'POWERBANK', v: 'Recharge ton téléphone'}, {k: 'SANGLE', v: 'Amovible'}],
-    shots: [V('charge6-flip7.mp4', 360, 640, 0.0, 2.2), V('charge6-flip7.mp4', 360, 640, 4.2, 6.4), V('charge6-flip7.mp4', 360, 640, 7.0, 9.2)],
+    shots: [V('audio/src/charge6.mp4', 720, 1280, 0.6, 4.6, {cy: 0.5}), V('audio/src/charge6.mp4', 720, 1280, 7.0, 11.0, {cy: 0.52}), V('audio/src/charge6.mp4', 720, 1280, 12.0, 16.0, {cy: 0.5})],
   },
   {
     id: 'pulse5', brand: 'JBL', model: 'PULSE 5', kind: 'ENCEINTE LUMINEUSE', price: '130 000', accent: '#c43cff', photo: 'pulse5.png', cutout: true,
     specs: [{k: 'SON', v: '360° · 40 W'}, {k: 'LUMIÈRE', v: 'Show synchronisé'}, {k: 'ÉTANCHE', v: 'IP67'}, {k: 'AUTONOMIE', v: '12 h'}, {k: 'PARTYBOOST', v: 'Relie plusieurs enceintes'}, {k: 'APPLI', v: 'JBL Portable'}],
-    shots: [V('pulse5-front.mp4', 360, 640, 0.2, 5.0), V('pulse5-back.mp4', 360, 640, 3.9, 7.9), V('pulse5-back.mp4', 360, 640, 9.5, 11.7)],
+    shots: [V('audio/src/pulse5.mp4', 720, 1280, 7.5, 11.5, {cy: 0.5}), V('audio/src/pulse5.mp4', 720, 1280, 18.5, 22.5, {cy: 0.5}), V('audio/src/pulse5.mp4', 720, 1280, 30.0, 33.5, {cy: 0.6}), V('audio/src/pulse5.mp4', 720, 1280, 38.6, 42.0, {cy: 0.6})],
   },
   {
     id: 'xtreme3', brand: 'JBL', model: 'XTREME 3', kind: 'ENCEINTE PORTABLE', price: '150 000', accent: '#2f7bff', photo: 'xtreme3.png', cutout: true,
     specs: [{k: 'BASSES', v: '2 radiateurs passifs'}, {k: 'ÉTANCHE', v: 'IP67'}, {k: 'AUTONOMIE', v: '15 h'}, {k: 'POWERBANK', v: 'Intégré'}, {k: 'TRANSPORT', v: 'Bandoulière incluse'}, {k: 'PARTYBOOST', v: 'Multi-enceintes'}],
-    shots: [V('xtreme3.mp4', 360, 640, 0.3, 7.0), V('xtreme3.mp4', 360, 640, 8.0, 12.3)],
+    shots: [V('audio/src/xtreme3.mp4', 1080, 1920, 2.0, 4.6, {cy: 0.5}), V('audio/src/xtreme3.mp4', 1080, 1920, 7.4, 9.8, {cy: 0.5}), V('audio/src/xtreme3.mp4', 1080, 1920, 13.0, 14.6, {cy: 0.5}), V('audio/src/xtreme3.mp4', 1080, 1920, 15.6, 17.8, {cy: 0.5}), V('audio/src/xtreme3.mp4', 1080, 1920, 25.0, 28.0, {cy: 0.5})],
   },
   {
     id: 'xtreme4', brand: 'JBL', model: 'XTREME 4', kind: 'ENCEINTE PORTABLE', price: '190 000', accent: '#ffb020', photo: 'xtreme4.png', cutout: true, badge: 'NOUVEAU',
     specs: [{k: 'SON', v: 'AI Sound Boost'}, {k: 'BATTERIE', v: 'Remplaçable'}, {k: 'AUTONOMIE', v: "Jusqu'à 24 h"}, {k: 'ÉTANCHE', v: 'IP67'}, {k: 'CONNEXION', v: 'Auracast'}, {k: 'TRANSPORT', v: 'Bandoulière'}],
-    shots: [P('xtreme4.png', 1147, 625, 1.0, 1.1, 0.5, 0.5, 4), P('xtreme4.png', 1147, 625, 2.3, 2.6, 0.45, 0.4, 3.5), P('xtreme4.png', 1147, 625, 2.4, 2.1, 0.12, 0.45, 3.5)],
+    shots: [V('audio/src/xtreme4.mp4', 1080, 1920, 0.0, 3.0, {cy: 0.45}), V('audio/src/xtreme4.mp4', 1080, 1920, 3.0, 7.0, {cy: 0.48}), V('audio/src/xtreme4.mp4', 1080, 1920, 9.6, 14.6, {cy: 0.45})],
   },
   {
     id: 'boombox3', brand: 'JBL', model: 'BOOMBOX 3', kind: 'ENCEINTE XXL', price: '280 000', accent: '#ff4d2e', photo: 'boombox3.jpg', cutout: false,
     specs: [{k: 'BASSES', v: 'Massives · 3 voies'}, {k: 'AUTONOMIE', v: '24 h'}, {k: 'ÉTANCHE', v: 'IP67'}, {k: 'POWERBANK', v: 'Intégré'}, {k: 'POIGNÉE', v: 'Intégrée · robuste'}, {k: 'PARTYBOOST', v: 'Multi-enceintes'}],
-    shots: [{img: 'audio/photos/boombox3.jpg', w: 569, h: 351, z0: 1.0, z1: 1.12, cx: 0.5, cy: 0.5, dur: 4}, {img: 'audio/photos/boombox3.jpg', w: 569, h: 351, z0: 1.9, z1: 2.2, cx: 0.48, cy: 0.5, dur: 3.5}, {img: 'audio/photos/boombox3.jpg', w: 569, h: 351, z0: 2.0, z1: 1.7, cx: 0.75, cy: 0.5, dur: 3.5}],
+    shots: [V('audio/src/boombox3.mp4', 1080, 1920, 0.0, 3.0, {cy: 0.45}), V('audio/src/boombox3.mp4', 1080, 1920, 17.6, 20.8, {cy: 0.45}), V('audio/src/boombox3.mp4', 1080, 1920, 22.4, 25.8, {cy: 0.45}), V('audio/src/boombox3.mp4', 1080, 1920, 36.8, 39.6, {cy: 0.45})],
   },
   {
     id: 'partybox310', brand: 'JBL', model: 'PARTYBOX 310', kind: 'ENCEINTE DE FÊTE', price: '330 000', accent: '#3d6bff', photo: 'partybox310.png', cutout: true,
     specs: [{k: 'PUISSANCE', v: '240 W'}, {k: 'LUMIÈRES', v: 'Show lumineux'}, {k: 'AUTONOMIE', v: '18 h'}, {k: 'MOBILITÉ', v: 'Roulettes + poignée'}, {k: 'ENTRÉES', v: 'Micro & guitare'}, {k: 'PROTECTION', v: 'IPX4'}],
-    shots: [P('partybox310.png', 415, 803, 1.0, 1.1, 0.5, 0.5, 4), P('partybox310.png', 415, 803, 1.9, 2.2, 0.5, 0.45, 3.5), P('partybox310.png', 415, 803, 2.1, 1.8, 0.5, 0.12, 3.5)],
+    shots: [V('audio/src/partybox310.mp4', 1080, 1920, 0.0, 4.4, {cy: 0.45}), V('audio/src/partybox310.mp4', 1080, 1920, 10.0, 13.5, {cy: 0.45}), V('audio/src/partybox310.mp4', 1080, 1920, 13.5, 17.0, {cy: 0.42})],
   },
   {
     id: 'stage320', brand: 'JBL', model: 'PARTYBOX STAGE 320', kind: 'ENCEINTE DE FÊTE', price: '360 000', accent: '#18e0a0', photo: 'stage320.png', cutout: true, badge: 'PARTY',
     specs: [{k: 'PUISSANCE', v: '240 W'}, {k: 'BATTERIE', v: 'Remplaçable · 18 h'}, {k: 'CONNEXION', v: 'Auracast'}, {k: 'LUMIÈRES', v: 'Show lumineux'}, {k: 'MOBILITÉ', v: 'Roulettes + poignée'}, {k: 'ENTRÉES', v: 'Micros & guitare'}],
-    shots: [P('stage320.png', 469, 1148, 1.0, 1.1, 0.5, 0.5, 4), P('stage320.png', 469, 1148, 1.8, 2.1, 0.5, 0.6, 3.5), P('stage320.png', 469, 1148, 2.0, 1.7, 0.5, 0.2, 3.5)],
+    shots: [V('audio/src/stage320.mp4', 720, 1280, 0.0, 3.4, {cy: 0.5}), V('audio/src/stage320.mp4', 720, 1280, 13.6, 16.8, {cy: 0.5}), V('audio/src/stage320.mp4', 720, 1280, 20.6, 24.8, {cy: 0.55})],
   },
   {
     id: 'onyx8', brand: 'HARMAN KARDON', model: 'ONYX STUDIO 8', kind: 'ENCEINTE DE SALON', price: '160 000', accent: '#e8d2a8', photo: 'onyx8.png', cutout: true,
     specs: [{k: 'SON', v: 'Stéréo puissant'}, {k: 'AUTONOMIE', v: '8 h'}, {k: 'MODE STÉRÉO', v: '2 enceintes'}, {k: 'POIGNÉE', v: 'Aluminium'}, {k: 'DESIGN', v: 'Rond iconique'}, {k: 'CONNEXION', v: 'Bluetooth'}],
-    shots: [P('onyx8.png', 1127, 1127, 1.0, 1.1, 0.5, 0.5, 4), P('onyx8.png', 1127, 1127, 2.0, 2.3, 0.5, 0.62, 3.5), P('onyx8.png', 1127, 1127, 2.2, 1.9, 0.3, 0.2, 3.5)],
+    shots: [V('audio/src/onyx8.mp4', 720, 1280, 0.0, 3.5, {cy: 0.45}), V('audio/src/onyx8.mp4', 720, 1280, 3.8, 6.3, {cy: 0.45}), V('audio/src/onyx8.mp4', 720, 1280, 6.5, 9.2, {cy: 0.45}), V('audio/src/onyx8.mp4', 720, 1280, 9.2, 12.5, {cy: 0.45})],
   },
   {
     id: 'aura4', brand: 'HARMAN KARDON', model: 'AURA STUDIO 4', kind: 'ENCEINTE DE SALON', price: '170 000', accent: '#5b9dff', photo: 'aura4.jpg', cutout: false, badge: 'NOUVEAU',
@@ -96,7 +96,7 @@ export const PRODUCTS_A: AP[] = [
   {
     id: 'onyx9', brand: 'HARMAN KARDON', model: 'ONYX STUDIO 9', kind: 'ENCEINTE DE SALON', price: '180 000', accent: '#c9ced6', photo: 'onyx9.png', cutout: true, badge: 'NOUVEAU',
     specs: [{k: 'SON', v: 'Stéréo riche'}, {k: 'CONNEXION', v: 'Bluetooth + Auracast'}, {k: 'AUTONOMIE', v: '8 h'}, {k: 'POIGNÉE', v: 'Aluminium'}, {k: 'DESIGN', v: 'Premium'}],
-    shots: [P('onyx9.png', 1085, 1187, 1.0, 1.1, 0.5, 0.5, 3.5), V('hk/onyx9.mp4', 640, 360, 0.0, 8.3, {fit: 'contain'}), V('hk/onyx9.mp4', 640, 360, 9.8, 12.0, {fit: 'contain'})],
+    shots: [V('audio/src/onyx9.mp4', 1080, 1920, 15.2, 19.0, {cy: 0.55}), V('audio/src/onyx9.mp4', 1080, 1920, 25.0, 29.5, {cy: 0.55}), V('audio/src/onyx9.mp4', 1080, 1920, 41.0, 45.0, {cy: 0.55})],
   },
   {
     id: 'bose', brand: 'BOSE', model: 'QUIETCOMFORT ULTRA', kind: 'CASQUE PREMIUM', price: '260 000', accent: '#d9b26a', photo: 'bose.png', cutout: true, badge: 'PREMIUM',
