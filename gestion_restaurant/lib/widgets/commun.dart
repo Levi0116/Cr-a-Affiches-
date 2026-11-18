@@ -97,6 +97,49 @@ Future<int?> demanderNombre(BuildContext context, String titre, {String label = 
   );
 }
 
+/// Lit « 0,5 » ou « 0.5 » ; renvoie un entier quand c'est possible.
+num? lireDecimal(String v) {
+  final d = double.tryParse(v.replaceAll(',', '.').trim());
+  if (d == null) return null;
+  return d == d.roundToDouble() ? d.round() : d;
+}
+
+/// Quantité décimale (« 0,5 » kg) : virgule ou point acceptés.
+Future<num?> demanderQuantite(BuildContext context, String titre, {String label = '', num? initial, String? aide}) {
+  final ctrl = TextEditingController(text: initial == null ? '' : '$initial'.replaceAll('.', ','));
+  num? lire(String v) {
+    final d = double.tryParse(v.replaceAll(',', '.').trim());
+    if (d == null) return null;
+    return d == d.roundToDouble() ? d.round() : d;
+  }
+
+  return showDialog<num>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(titre),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (aide != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(aide)),
+          TextField(
+            controller: ctrl,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+            style: const TextStyle(fontSize: 24),
+            decoration: InputDecoration(labelText: label),
+            onSubmitted: (v) => Navigator.pop(ctx, lire(v)),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, lire(ctrl.text)), child: const Text('OK')),
+      ],
+    ),
+  );
+}
+
 Future<bool> confirmer(BuildContext context, String titre, String message) async =>
     await showDialog<bool>(
       context: context,

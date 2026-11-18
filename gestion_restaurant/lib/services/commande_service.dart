@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../core/stock_calc.dart';
 import '../models/modeles.dart';
 import 'db.dart';
 
@@ -40,6 +41,13 @@ class CommandeService {
       throw ErreurMetier("L'addition a déjà été demandée : impossible d'ajouter des articles");
     }
 
+    // Fiches techniques des plats concernés (lues dans la copie locale).
+    final recettes = <String, Recette>{};
+    for (final e in elements.where((e) => e.article.aRecette)) {
+      final r = Recette.fromDoc(await db.recettes.doc(e.article.id).get());
+      if (r.ingredients.isNotEmpty) recettes[e.article.id] = r;
+    }
+
     final b = db.fs.batch();
     final maintenant = DateTime.now();
     final String idSession;
@@ -71,36 +79,59 @@ class CommandeService {
 
     var total = 0;
     for (final e in elements) {
+      final art = e.article;
+      // Plat à fiche technique : on déduit chaque ingrédient.
+      final recette = recettes[art.id];
+      final deductions = recette == null ? const <Ingredient>[] : deductionsPour(recette, e.quantite);
       final ligne = LigneCommande(
         id: db.nouvelId(),
-        idArticle: e.article.id,
-        nom: e.article.nom,
+        idArticle: art.id,
+        nom: art.nom,
         quantite: e.quantite,
-        prixUnitaire: e.article.prixVente,
+        prixUnitaire: art.prixVente,
         note: e.note,
         tour: tour,
         auteur: serveuse.nom,
         heure: maintenant,
+        deductions: deductions,
       );
       total += ligne.montant;
       b.set(db.lignes(idSession).doc(ligne.id), {...db.meta(serveuse), ...ligne.toMap()});
       final majArticle = <String, dynamic>{'nbVentes': FieldValue.increment(e.quantite)};
-      if (e.article.suiviStock) {
+      final motif =
+          '${e.quantite} × ${art.nom} · table ${table?.numero ?? session?.numeroTable ?? 'à emporter'}, tour $tour';
+      if (recette != null) {
+        for (final d in deductions) {
+          b.set(db.mouvementsStock.doc(db.nouvelId()), {
+            ...db.meta(serveuse),
+            'idArticle': d.idArticle,
+            'nomArticle': d.nom,
+            'type': 'vente',
+            'quantite': -d.quantite,
+            'auteur': serveuse.nom,
+            'motif': motif,
+            'idSession': idSession,
+          });
+          b.update(db.articles.doc(d.idArticle), {'stock': FieldValue.increment(-d.quantite)});
+        }
+      } else if (art.suiviStock) {
         // Le stock ne se modifie jamais directement : un mouvement + un
         // décrément, qui s'additionnent sans conflit même hors ligne.
         majArticle['stock'] = FieldValue.increment(-e.quantite);
         b.set(db.mouvementsStock.doc(db.nouvelId()), {
           ...db.meta(serveuse),
-          'idArticle': e.article.id,
-          'nomArticle': e.article.nom,
+          'idArticle': art.id,
+          'nomArticle': art.nom,
           'type': 'vente',
           'quantite': -e.quantite,
           'auteur': serveuse.nom,
-          'motif': 'Session $idSession, tour $tour',
+          'motif': motif,
           'idSession': idSession,
         });
       }
-      b.update(db.articles.doc(e.article.id), majArticle);
+      // Bouteille consignée : un vide de plus à rendre au fournisseur.
+      if (art.consigne) majArticle['vides'] = FieldValue.increment(e.quantite);
+      b.update(db.articles.doc(art.id), majArticle);
     }
     b.update(db.sessions.doc(idSession), {
       'total': FieldValue.increment(total),

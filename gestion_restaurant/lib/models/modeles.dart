@@ -157,8 +157,10 @@ class Categorie {
 }
 
 /// revendu : bière, sucrerie… une vente retire une unité.
-/// prepare : plat ; au début géré en « portions disponibles ».
-enum TypeArticle { revendu, prepare }
+/// prepare : plat, géré en « portions disponibles » ou par fiche technique.
+/// ingredient : matière première (poulet, oignons…) : jamais vendue seule,
+/// absente du menu, déduite via les fiches techniques.
+enum TypeArticle { revendu, prepare, ingredient }
 
 class Article {
   final String id;
@@ -184,6 +186,16 @@ class Article {
   final int nbVentes;
   final String photoUrl;
 
+  /// Plat géré par fiche technique : la vente déduit ses ingrédients, et
+  /// les portions possibles sont calculées (le plat n'a pas de stock propre).
+  final bool aRecette;
+
+  /// Bouteille consignée : les vides sont suivis jusqu'au retour fournisseur.
+  final bool consigne;
+
+  /// Bouteilles vides en attente de retour au fournisseur.
+  final num vides;
+
   const Article({
     required this.id,
     required this.nom,
@@ -201,11 +213,22 @@ class Article {
     this.ordre = 0,
     this.nbVentes = 0,
     this.photoUrl = '',
+    this.aRecette = false,
+    this.consigne = false,
+    this.vides = 0,
   });
 
   /// Indisponible si forcé à la main, ou si le stock suivi est épuisé.
-  bool get vendable => actif && disponible && (!suiviStock || stock > 0);
-  bool get sousSeuil => suiviStock && stock <= seuilAlerte;
+  /// Pour un plat à fiche technique, voir [estVendable].
+  bool get vendable => actif && disponible && type != TypeArticle.ingredient && (aRecette || !suiviStock || stock > 0);
+  bool get sousSeuil => suiviStock && !aRecette && stock <= seuilAlerte;
+  bool get auMenu => actif && type != TypeArticle.ingredient;
+
+  /// Vendable compte tenu des portions possibles des plats à fiche technique.
+  bool estVendable(Map<String, int> portions) => vendable && (!aRecette || (portions[id] ?? 0) > 0);
+
+  /// Reste à afficher sur la tablette (« reste 3 »), ou null si non suivi.
+  num? reste(Map<String, int> portions) => aRecette ? portions[id] : (suiviStock ? stock : null);
 
   factory Article.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data()!;
@@ -226,6 +249,9 @@ class Article {
       ordre: _int(m['ordre']),
       nbVentes: _int(m['nbVentes']),
       photoUrl: m['photoUrl'] as String? ?? '',
+      aRecette: m['aRecette'] as bool? ?? false,
+      consigne: m['consigne'] as bool? ?? false,
+      vides: (m['vides'] as num?) ?? 0,
     );
   }
 
@@ -242,7 +268,38 @@ class Article {
     'unitesParCasier': unitesParCasier,
     'ordre': ordre,
     'photoUrl': photoUrl,
+    'consigne': consigne,
   };
+}
+
+/// Un ingrédient d'une fiche technique : « 0,1 kg d'oignons ».
+class Ingredient {
+  final String idArticle;
+  final String nom;
+  final num quantite;
+  final String unite;
+  const Ingredient({required this.idArticle, required this.nom, required this.quantite, this.unite = ''});
+
+  factory Ingredient.fromMap(Map m) => Ingredient(
+    idArticle: m['idArticle'] as String,
+    nom: m['nom'] as String? ?? '',
+    quantite: (m['quantite'] as num?) ?? 0,
+    unite: m['unite'] as String? ?? '',
+  );
+
+  Map<String, dynamic> toMap() => {'idArticle': idArticle, 'nom': nom, 'quantite': quantite, 'unite': unite};
+}
+
+/// Fiche technique d'un plat (collection `recettes`, document = id du plat).
+class Recette {
+  final String idArticle;
+  final List<Ingredient> ingredients;
+  const Recette({required this.idArticle, required this.ingredients});
+
+  factory Recette.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) => Recette(
+    idArticle: d.id,
+    ingredients: ((d.data()?['ingredients'] as List?) ?? const []).cast<Map>().map(Ingredient.fromMap).toList(),
+  );
 }
 
 /// ouverte → addition (demandée) → facturee → payee | credit.
@@ -321,6 +378,10 @@ class LigneCommande {
 
   /// Ligne déjà affectée à une facture partielle (partage par article).
   final String? idFacture;
+
+  /// Ingrédients déduits à la vente (plat à fiche technique), pour pouvoir
+  /// les remettre exactement en stock en cas d'annulation.
+  final List<Ingredient> deductions;
   const LigneCommande({
     required this.id,
     required this.idArticle,
@@ -336,6 +397,7 @@ class LigneCommande {
     this.motifAnnulation,
     this.validePar,
     this.idFacture,
+    this.deductions = const [],
   });
 
   bool get annulee => statut == StatutLigne.annulee;
@@ -359,6 +421,7 @@ class LigneCommande {
     motifAnnulation: m['motifAnnulation'] as String?,
     validePar: m['validePar'] as String?,
     idFacture: m['idFacture'] as String?,
+    deductions: ((m['deductions'] as List?) ?? const []).cast<Map>().map(Ingredient.fromMap).toList(),
   );
 
   Map<String, dynamic> toMap() => {
@@ -374,6 +437,7 @@ class LigneCommande {
     'offert': offert,
     if (motifAnnulation != null) 'motifAnnulation': motifAnnulation,
     if (validePar != null) 'validePar': validePar,
+    if (deductions.isNotEmpty) 'deductions': [for (final d in deductions) d.toMap()],
   };
 }
 

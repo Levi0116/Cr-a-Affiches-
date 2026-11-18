@@ -1,6 +1,7 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gestion_restaurant/core/calculs.dart';
+import 'package:gestion_restaurant/core/stock_calc.dart';
 import 'package:gestion_restaurant/models/modeles.dart';
 import 'package:gestion_restaurant/services/admin_service.dart';
 import 'package:gestion_restaurant/services/caisse_service.dart';
@@ -56,7 +57,12 @@ void main() {
     expect((await table('t-1')).statut, StatutTable.occupee);
     expect((await session(s)).total, 6100);
     expect((await art('a-flag')).stock, 45);
-    expect((await art('a-poulet')).stock, 9);
+    // Le poulet braisé déduit sa fiche technique : 1 poulet, 0,1 kg d'oignons, 1 attiéké.
+    expect((await art('i-poulet')).stock, 11);
+    expect((await art('i-oignon')).stock, closeTo(4.9, 1e-9));
+    expect((await art('i-attieke')).stock, 39);
+    // Bouteilles consignées : 3 vides de Flag à rendre.
+    expect((await art('a-flag')).vides, 3);
 
     await commander(awa, 't-1', {'a-coca': 2}, idSession: s);
     var ss = await session(s);
@@ -208,5 +214,76 @@ void main() {
     expect((await db.historiquePrix.get()).docs.single.data()['ancienPrix'], 700);
     // La facture déjà émise garde l'ancien prix.
     expect((await facture(f.id)).lignes.single.prixUnitaire, 700);
+  });
+
+  test('fiche technique : portions possibles, déduction, annulation qui remet les ingrédients', () async {
+    Future<int> portions(String id) async {
+      final r = Recette.fromDoc(await db.recettes.doc(id).get());
+      final arts = {for (final d in (await db.articles.get()).docs) d.id: Article.fromDoc(d)};
+      return portionsPossibles(r, arts);
+    }
+
+    // 12 poulets, 5 kg d'oignons (50 portions), 40 attiéké → 12 portions.
+    expect(await portions('a-poulet'), 12);
+    // Poisson : 8 poissons, piment 1 kg / 0,02 = 50 → 8.
+    expect(await portions('a-poisson'), 8);
+
+    final s = await commander(awa, 't-2', {'a-poulet': 3, 'a-poisson': 2});
+    expect(await portions('a-poulet'), 9);
+    expect((await art('i-oignon')).stock, closeTo(4.5, 1e-9));
+    expect((await art('i-attieke')).stock, 35);
+
+    final ligne = (await caisse.lignesSession(s)).firstWhere((l) => l.idArticle == 'a-poulet');
+    expect(ligne.deductions.map((d) => d.idArticle), ['i-poulet', 'i-oignon', 'i-attieke']);
+    expect(ligne.deductions[1].quantite, 0.3);
+
+    await cmd.demanderAnnulation(awa, await session(s), ligne, 'Plus de poulet chez le client');
+    final dem = DemandeValidation.fromDoc((await db.demandesValidation.get()).docs.single);
+    await admin.traiterDemande(patron, dem, true);
+    expect((await art('i-poulet')).stock, 12);
+    expect((await art('i-oignon')).stock, closeTo(4.8, 1e-9));
+    expect((await art('i-attieke')).stock, 38);
+    expect(await portions('a-poulet'), 12);
+  });
+
+  test('fiche technique créée par l’admin ; rupture d’un ingrédient = plat indisponible', () async {
+    final alloco = await art('a-alloco');
+    await admin.enregistrerRecette(patron, alloco, const [
+      Ingredient(idArticle: 'i-piment', nom: 'Piment frais', quantite: 0.5, unite: 'kg'),
+    ]);
+    final a2 = await art('a-alloco');
+    expect(a2.aRecette, isTrue);
+    final r = Recette.fromDoc(await db.recettes.doc('a-alloco').get());
+    final arts = {for (final d in (await db.articles.get()).docs) d.id: Article.fromDoc(d)};
+    expect(portionsPossibles(r, arts), 2);
+    await commander(awa, 't-3', {'a-alloco': 2});
+    final arts2 = {for (final d in (await db.articles.get()).docs) d.id: Article.fromDoc(d)};
+    final p = portionsPossibles(r, arts2);
+    expect(p, 0);
+    expect(arts2['a-alloco']!.estVendable({'a-alloco': p}), isFalse);
+    // Un ingrédient n'est jamais vendable directement.
+    expect(arts2['i-piment']!.vendable, isFalse);
+    expect(() => admin.enregistrerRecette(koffi, alloco, const []), throwsA(isA<ErreurMetier>()));
+  });
+
+  test('consignes : vides comptés à la vente, rendus à la livraison, corrigés', () async {
+    await commander(awa, 't-4', {'a-castel': 6, 'a-eau': 2});
+    expect((await art('a-castel')).vides, 6);
+    expect((await art('a-eau')).vides, 0); // eau en plastique : pas consignée
+    await stock.saisirLivraison(
+        a: moussa, article: await art('a-castel'), casiers: 1, prixAchatUnitaire: 520, fournisseur: 'Solibra', videsRendus: 4);
+    expect((await art('a-castel')).vides, 2);
+    expect((await art('a-castel')).stock, 36 - 6 + 12);
+    await stock.corrigerVides(moussa, await art('a-castel'), 1, 'Bouteille cassée');
+    expect((await art('a-castel')).vides, 1);
+    expect(() async => stock.rendreVides(moussa, await art('a-castel'), 5), throwsA(isA<ErreurMetier>()));
+    await stock.rendreVides(moussa, await art('a-castel'), 1, fournisseur: 'Solibra');
+    expect((await art('a-castel')).vides, 0);
+  });
+
+  test('affichage des quantités décimales', () {
+    expect(qte(4.699999999), '4,7');
+    expect(qte(12), '12');
+    expect(qte(0.1 * 3, 'kg'), '0,3 kg');
   });
 }

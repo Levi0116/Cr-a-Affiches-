@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/stock_calc.dart';
 import '../models/modeles.dart';
 import '../services/admin_service.dart';
 import '../services/caisse_service.dart';
@@ -187,3 +188,18 @@ final auditProvider = StreamProvider<List<EntreeAudit>>(
       .snapshots()
       .map((q) => _docs(q, EntreeAudit.fromDoc)),
 );
+
+/// Fiches techniques des plats, par identifiant de plat.
+final recettesProvider = StreamProvider<Map<String, Recette>>(
+  (ref) => ref.watch(dbProvider).recettes.snapshots().map((q) => {for (final d in q.docs) d.id: Recette.fromDoc(d)}),
+);
+
+/// Portions encore possibles pour chaque plat à fiche technique.
+final portionsProvider = Provider<Map<String, int>>((ref) {
+  final recettes = ref.watch(recettesProvider).value ?? const {};
+  final articles = {for (final a in ref.watch(articlesProvider).value ?? const <Article>[]) a.id: a};
+  return {
+    for (final e in recettes.entries)
+      if (articles[e.key]?.aRecette ?? false) e.key: portionsPossibles(e.value, articles),
+  };
+});

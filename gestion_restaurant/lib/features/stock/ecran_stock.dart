@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/format.dart';
+import '../../core/stock_calc.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
@@ -19,13 +20,14 @@ class EcranStock extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final alertes = (ref.watch(articlesProvider).value ?? const []).where((a) => a.actif && a.sousSeuil).length;
     final corps = DefaultTabController(
-      length: 3,
+      length: 4,
       child: Column(
         children: [
           TabBar(
             tabs: [
               const Tab(text: 'Articles'),
               Tab(text: 'Alertes ($alertes)'),
+              const Tab(text: 'Consignes'),
               const Tab(text: 'Historique'),
             ],
           ),
@@ -34,6 +36,7 @@ class EcranStock extends ConsumerWidget {
               children: [
                 _ListeArticles(seulementAlertes: false),
                 _ListeArticles(seulementAlertes: true),
+                _Consignes(),
                 _Historique(),
               ],
             ),
@@ -57,6 +60,8 @@ class _ListeArticles extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(articlesProvider);
     final categories = {for (final c in ref.watch(categoriesProvider).value ?? const <Categorie>[]) c.id: c.nom};
+    final portions = ref.watch(portionsProvider);
+    final recettes = ref.watch(recettesProvider).value ?? const <String, Recette>{};
     return async.when(
       loading: () => const Chargement(),
       error: (e, _) => Chargement(erreur: e),
@@ -82,20 +87,32 @@ class _ListeArticles extends ConsumerWidget {
                 index: i,
                 child: Card(
                   child: ListTile(
-                    title: Text(a.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(
+                      a.aRecette
+                          ? '${a.nom} · ${portions[a.id] ?? 0} portion(s) possible(s)'
+                          : (a.type == TypeArticle.ingredient ? '${a.nom} (${a.unite})' : a.nom),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     subtitle: Text(
                       [
                         categories[a.idCategorie] ?? '',
-                        if (a.suiviStock) 'seuil ${a.seuilAlerte}' else 'stock non suivi',
+                        if (a.aRecette)
+                          'fiche : ${(recettes[a.id]?.ingredients ?? const []).map((i) => '${qte(i.quantite, i.unite)} ${i.nom}').join(' + ')}'
+                        else if (a.suiviStock)
+                          'seuil ${qte(a.seuilAlerte, a.unite)}'
+                        else
+                          'stock non suivi',
                         if (a.coutMoyen > 0) 'coût ${fcfa(a.coutMoyen)}',
                         if (a.unitesParCasier > 0) '${a.unitesParCasier}/casier',
                       ].where((x) => x.isNotEmpty).join(' · '),
                     ),
                     leading: CircleAvatar(
-                      backgroundColor: !a.vendable ? identite.erreur : (a.sousSeuil ? couleurOccupee : couleurLibre),
+                      backgroundColor: a.type != TypeArticle.ingredient && !a.estVendable(portions)
+                          ? identite.erreur
+                          : (a.sousSeuil || (a.aRecette && (portions[a.id] ?? 0) <= 3) ? couleurOccupee : couleurLibre),
                       foregroundColor: Colors.white,
                       child: Text(
-                        a.suiviStock ? '${a.stock}' : '∞',
+                        a.aRecette ? '${portions[a.id] ?? 0}' : (a.suiviStock ? qte(a.stock) : '∞'),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),
@@ -103,24 +120,26 @@ class _ListeArticles extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (a.stock < 0) Pastille('Négatif !', identite.erreur),
-                        Switch(
-                          value: a.disponible,
-                          onChanged: (v) => essayer(
-                            context,
-                            () => ref.read(stockServiceProvider).forcerDisponibilite(ref.read(acteurProvider)!, a, v),
+                        if (a.type != TypeArticle.ingredient)
+                          Switch(
+                            value: a.disponible,
+                            onChanged: (v) => essayer(
+                              context,
+                              () => ref.read(stockServiceProvider).forcerDisponibilite(ref.read(acteurProvider)!, a, v),
+                            ),
                           ),
-                        ),
-                        PopupMenuButton<String>(
-                          onSelected: (c) => _action(context, ref, a, c),
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'livraison', child: Text('Saisir une livraison')),
-                            const PopupMenuItem(value: 'perte', child: Text('Saisir une perte')),
-                            if (a.type == TypeArticle.prepare)
-                              const PopupMenuItem(value: 'portions', child: Text('Portions du jour')),
-                            const PopupMenuItem(value: 'inventaire', child: Text('Inventaire (compté)')),
-                            const PopupMenuItem(value: 'seuil', child: Text('Régler le seuil d’alerte')),
-                          ],
-                        ),
+                        if (!a.aRecette)
+                          PopupMenuButton<String>(
+                            onSelected: (c) => _action(context, ref, a, c),
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(value: 'livraison', child: Text('Saisir une livraison')),
+                              const PopupMenuItem(value: 'perte', child: Text('Saisir une perte')),
+                              if (a.type == TypeArticle.prepare)
+                                const PopupMenuItem(value: 'portions', child: Text('Portions du jour')),
+                              const PopupMenuItem(value: 'inventaire', child: Text('Inventaire (compté)')),
+                              const PopupMenuItem(value: 'seuil', child: Text('Régler le seuil d’alerte')),
+                            ],
+                          ),
                       ],
                     ),
                   ),
@@ -139,7 +158,7 @@ class _ListeArticles extends ConsumerWidget {
       case 'livraison':
         await _livraison(context, ref, a);
       case 'perte':
-        final q = await demanderNombre(context, 'Perte : ${a.nom}', label: 'Quantité');
+        final q = await demanderQuantite(context, 'Perte : ${a.nom}', label: 'Quantité (${a.unite})');
         if (q == null || !context.mounted) return;
         final motif = await demanderTexte(context, 'Motif de la perte', label: 'casse, périmé, offert…');
         if (motif == null || !context.mounted) return;
@@ -153,20 +172,20 @@ class _ListeArticles extends ConsumerWidget {
         if (p == null || !context.mounted) return;
         await essayer(context, () => svc.definirPortions(acteur, a, p), succes: 'Portions enregistrées');
       case 'inventaire':
-        final q = await demanderNombre(
+        final q = await demanderQuantite(
           context,
           'Inventaire : ${a.nom}',
-          label: 'Quantité comptée',
-          aide: 'Stock théorique : ${a.stock}',
+          label: 'Quantité comptée (${a.unite})',
+          aide: 'Stock théorique : ${qte(a.stock, a.unite)}',
         );
         if (q == null || !context.mounted) return;
         await essayer(
           context,
           () => svc.soumettreInventaire(acteur, a, q),
-          succes: q == a.stock ? 'Aucun écart' : 'Écart ${q - a.stock} envoyé en validation',
+          succes: q == a.stock ? 'Aucun écart' : 'Écart ${qte(q - a.stock)} envoyé en validation',
         );
       case 'seuil':
-        final s = await demanderNombre(context, 'Seuil d’alerte : ${a.nom}', initial: a.seuilAlerte.toInt());
+        final s = await demanderQuantite(context, 'Seuil d’alerte : ${a.nom}', initial: a.seuilAlerte);
         if (s == null || !context.mounted) return;
         await essayer(context, () => svc.reglerSeuil(acteur, a, s));
     }
@@ -177,6 +196,7 @@ class _ListeArticles extends ConsumerWidget {
     final unites = TextEditingController(text: '0');
     final prix = TextEditingController(text: a.coutMoyen > 0 ? '${a.coutMoyen}' : '');
     final fournisseur = TextEditingController();
+    final vides = TextEditingController(text: a.vides > 0 ? '${a.vides}' : '0');
     final fournisseurs = await ref.read(dbProvider).fournisseurs.get();
     if (!context.mounted) return;
     final ok = await showDialog<bool>(
@@ -213,6 +233,7 @@ class _ListeArticles extends ConsumerWidget {
                   if (a.unitesParCasier > 0) champ(casiers, 'Casiers (${a.unitesParCasier} par casier)'),
                   champ(unites, 'Unités isolées'),
                   champ(prix, 'Prix d’achat par unité (F)'),
+                  if (a.consigne) champ(vides, 'Bouteilles vides rendues (${qte(a.vides)} en attente)'),
                   const SizedBox(height: 12),
                   Text(
                     'Entrée : $total ${a.unite}(s)',
@@ -241,8 +262,92 @@ class _ListeArticles extends ConsumerWidget {
             unites: int.tryParse(unites.text) ?? 0,
             prixAchatUnitaire: int.tryParse(prix.text) ?? 0,
             fournisseur: fournisseur.text.trim(),
+            videsRendus: a.consigne ? (int.tryParse(vides.text) ?? 0).clamp(0, a.vides.toInt()) : 0,
           ),
       succes: 'Livraison enregistrée',
+    );
+  }
+}
+
+/// Consignes (section 3.3) : bouteilles et casiers vides à rendre.
+class _Consignes extends ConsumerWidget {
+  const _Consignes();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final articles = (ref.watch(articlesProvider).value ?? const <Article>[]).where((a) => a.consigne).toList();
+    final total = articles.fold<num>(0, (s, a) => s + a.vides);
+    if (articles.isEmpty) {
+      return const Center(child: Text('Aucun article consigné (à activer dans le menu)'));
+    }
+    return ListView(
+      padding: const EdgeInsets.all(8),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text('${qte(total)} bouteille(s) vide(s) à rendre', style: Theme.of(context).textTheme.titleMedium),
+        ),
+        for (final (i, a) in articles.indexed)
+          Apparition(
+            index: i,
+            child: Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: identite.accent.withValues(alpha: 0.2),
+                  foregroundColor: identite.texte,
+                  child: Text(qte(a.vides), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                ),
+                title: Text(a.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(
+                  a.unitesParCasier > 0
+                      ? '${a.vides ~/ a.unitesParCasier} casier(s) complet(s) + ${a.vides % a.unitesParCasier} bouteille(s)'
+                      : 'bouteilles vides',
+                ),
+                trailing: Wrap(
+                  spacing: 6,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () async {
+                        final n = await demanderNombre(
+                          context,
+                          'Corriger les vides : ${a.nom}',
+                          label: 'Vides comptés',
+                          initial: a.vides.toInt(),
+                        );
+                        if (n == null || !context.mounted) return;
+                        final motif = await demanderTexte(context, 'Motif', label: 'casse, perte…');
+                        if (motif == null || !context.mounted) return;
+                        await essayer(
+                          context,
+                          () => ref.read(stockServiceProvider).corrigerVides(ref.read(acteurProvider)!, a, n, motif),
+                        );
+                      },
+                      child: const Text('Corriger'),
+                    ),
+                    FilledButton(
+                      onPressed: a.vides <= 0
+                          ? null
+                          : () async {
+                              final n = await demanderNombre(
+                                context,
+                                'Rendre des vides : ${a.nom}',
+                                label: 'Bouteilles rendues',
+                                initial: a.vides.toInt(),
+                              );
+                              if (n == null || !context.mounted) return;
+                              await essayer(
+                                context,
+                                () => ref.read(stockServiceProvider).rendreVides(ref.read(acteurProvider)!, a, n),
+                                succes: 'Retour enregistré',
+                              );
+                            },
+                      child: const Text('Rendre'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

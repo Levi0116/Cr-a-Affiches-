@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/format.dart';
+import '../../core/stock_calc.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
@@ -367,10 +368,26 @@ class _Menu extends ConsumerWidget {
             ListTile(
               title: Text(a.nom, style: TextStyle(color: a.actif ? null : Colors.grey)),
               subtitle: Text(
-                '${a.type == TypeArticle.revendu ? 'Revendu' : 'Préparé'}'
+                '${switch (a.type) {
+                  TypeArticle.revendu => a.consigne ? 'Revendu · consigné' : 'Revendu',
+                  TypeArticle.prepare => a.aRecette ? 'Plat · fiche technique' : 'Plat · portions du jour',
+                  TypeArticle.ingredient => 'Ingrédient · ${qte(a.stock, a.unite)} en stock',
+                }}'
                 '${a.actif ? '' : ' · retiré du menu'}',
               ),
-              trailing: Text(fcfa(a.prixVente), style: const TextStyle(fontSize: 16)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (a.type == TypeArticle.prepare)
+                    TextButton.icon(
+                      icon: const Icon(Icons.menu_book_rounded),
+                      label: const Text('Fiche technique'),
+                      onPressed: () => _editerRecette(context, ref, a, articles),
+                    ),
+                  if (a.type != TypeArticle.ingredient)
+                    Text(fcfa(a.prixVente), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ],
+              ),
               onTap: () => _editerArticle(context, ref, categories, a),
             ),
         ],
@@ -388,6 +405,9 @@ class _Menu extends ConsumerWidget {
     var cat = a?.idCategorie ?? categories.first.id;
     var type = a?.type ?? TypeArticle.revendu;
     var suivi = a?.suiviStock ?? true;
+    var consigne = a?.consigne ?? false;
+    final unite = TextEditingController(text: a?.type == TypeArticle.ingredient ? a!.unite : 'kg');
+    final decimales = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))];
     var actif = a?.actif ?? true;
     final chiffres = [FilteringTextInputFormatter.digitsOnly];
     final ok = await showDialog<bool>(
@@ -420,22 +440,42 @@ class _Menu extends ConsumerWidget {
                 SegmentedButton<TypeArticle>(
                   segments: const [
                     ButtonSegment(value: TypeArticle.revendu, label: Text('Revendu tel quel')),
-                    ButtonSegment(value: TypeArticle.prepare, label: Text('Préparé (plat)')),
+                    ButtonSegment(value: TypeArticle.prepare, label: Text('Plat préparé')),
+                    ButtonSegment(value: TypeArticle.ingredient, label: Text('Ingrédient')),
                   ],
                   selected: {type},
                   onSelectionChanged: (v) => setState(() => type = v.first),
                 ),
-                SwitchListTile(
-                  title: const Text('Suivre le stock'),
-                  subtitle: Text(type == TypeArticle.prepare ? 'en portions disponibles' : 'à l’unité'),
-                  value: suivi,
-                  onChanged: (v) => setState(() => suivi = v),
-                ),
-                if (suivi) ...[
+                if (type == TypeArticle.ingredient)
+                  TextField(
+                    controller: unite,
+                    decoration: const InputDecoration(labelText: 'Unité (kg, pièce, litre, portion…)'),
+                  ),
+                if (type == TypeArticle.prepare && (a?.aRecette ?? false))
+                  const ListTile(
+                    leading: Icon(Icons.menu_book_rounded),
+                    title: Text('Géré par fiche technique'),
+                    subtitle: Text('Les portions sont calculées à partir du stock des ingrédients.'),
+                  )
+                else if (type != TypeArticle.ingredient)
+                  SwitchListTile(
+                    title: const Text('Suivre le stock'),
+                    subtitle: Text(type == TypeArticle.prepare ? 'en portions disponibles' : 'à l’unité'),
+                    value: suivi,
+                    onChanged: (v) => setState(() => suivi = v),
+                  ),
+                if (type == TypeArticle.revendu)
+                  SwitchListTile(
+                    title: const Text('Bouteille consignée'),
+                    subtitle: const Text('Suivre les vides à rendre au fournisseur'),
+                    value: consigne,
+                    onChanged: (v) => setState(() => consigne = v),
+                  ),
+                if (suivi || type == TypeArticle.ingredient) ...[
                   TextField(
                     controller: seuil,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: chiffres,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: decimales,
                     decoration: const InputDecoration(labelText: 'Seuil d’alerte'),
                   ),
                   if (type == TypeArticle.revendu)
@@ -448,8 +488,8 @@ class _Menu extends ConsumerWidget {
                   if (a == null)
                     TextField(
                       controller: stockInit,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: chiffres,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: decimales,
                       decoration: const InputDecoration(labelText: 'Stock initial'),
                     ),
                 ],
@@ -479,11 +519,14 @@ class _Menu extends ConsumerWidget {
       idCategorie: cat,
       prixVente: int.tryParse(prix.text) ?? 0,
       type: type,
-      unite: type == TypeArticle.revendu ? 'bouteille' : 'portion',
-      seuilAlerte: int.tryParse(seuil.text) ?? 0,
+      unite: type == TypeArticle.ingredient
+          ? (unite.text.trim().isEmpty ? 'unité' : unite.text.trim())
+          : (type == TypeArticle.revendu ? 'bouteille' : 'portion'),
+      seuilAlerte: lireDecimal(seuil.text) ?? 0,
       disponible: a?.disponible ?? true,
       actif: actif,
-      suiviStock: suivi,
+      suiviStock: type == TypeArticle.ingredient || suivi,
+      consigne: type == TypeArticle.revendu && consigne,
       unitesParCasier: int.tryParse(casier.text) ?? 0,
       ordre: a?.ordre ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
       photoUrl: photo.text.trim(),
@@ -496,9 +539,109 @@ class _Menu extends ConsumerWidget {
             ref.read(acteurProvider)!,
             nouveau,
             ancien: a,
-            stockInitial: int.tryParse(stockInit.text) ?? 0,
+            stockInitial: lireDecimal(stockInit.text) ?? 0,
           ),
       succes: 'Article enregistré',
+    );
+  }
+
+  /// Fiche technique d'un plat : ingrédients et quantités par portion.
+  Future<void> _editerRecette(BuildContext context, WidgetRef ref, Article plat, List<Article> articles) async {
+    final existante = ref.read(recettesProvider).value?[plat.id];
+    final choix = articles
+        .where((a) => a.id != plat.id && (a.type == TypeArticle.ingredient || a.type == TypeArticle.revendu))
+        .toList();
+    final lignes = <(String?, TextEditingController)>[
+      for (final i in existante?.ingredients ?? const <Ingredient>[])
+        (i.idArticle, TextEditingController(text: '${i.quantite}'.replaceAll('.', ','))),
+    ];
+    if (lignes.isEmpty) lignes.add((null, TextEditingController()));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text('Fiche technique : ${plat.nom}'),
+          content: SizedBox(
+            width: 520,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const Text('Ingrédients pour UNE portion. Chaque vente les retire du stock.'),
+                const SizedBox(height: 12),
+                for (var i = 0; i < lignes.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            initialValue: lignes[i].$1,
+                            isExpanded: true,
+                            decoration: const InputDecoration(labelText: 'Ingrédient'),
+                            items: [
+                              for (final a in choix)
+                                DropdownMenuItem(value: a.id, child: Text('${a.nom} (${a.unite})')),
+                            ],
+                            onChanged: (v) => setState(() => lignes[i] = (v, lignes[i].$2)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: lignes[i].$2,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: InputDecoration(
+                              labelText: 'Quantité',
+                              suffixText: choix.where((a) => a.id == lignes[i].$1).firstOrNull?.unite,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Retirer',
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => setState(() => lignes.removeAt(i)),
+                        ),
+                      ],
+                    ),
+                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Ajouter un ingrédient'),
+                    onPressed: () => setState(() => lignes.add((null, TextEditingController()))),
+                  ),
+                ),
+                const Text(
+                  'Pour revenir aux « portions du jour » saisies chaque matin, retirez tous les ingrédients.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Enregistrer')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final ingredients = [
+      for (final (id, ctrl) in lignes)
+        if (id != null && (lireDecimal(ctrl.text) ?? 0) > 0)
+          Ingredient(
+            idArticle: id,
+            nom: choix.firstWhere((a) => a.id == id).nom,
+            quantite: lireDecimal(ctrl.text)!,
+            unite: choix.firstWhere((a) => a.id == id).unite,
+          ),
+    ];
+    await essayer(
+      context,
+      () => ref.read(adminServiceProvider).enregistrerRecette(ref.read(acteurProvider)!, plat, ingredients),
+      succes: ingredients.isEmpty ? 'Plat repassé en portions du jour' : 'Fiche technique enregistrée',
     );
   }
 }

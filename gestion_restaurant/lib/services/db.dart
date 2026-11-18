@@ -41,6 +41,7 @@ class RestoDb {
   CollectionReference<Map<String, dynamic>> get tables => col('tables');
   CollectionReference<Map<String, dynamic>> get categories => col('categories');
   CollectionReference<Map<String, dynamic>> get articles => col('articles');
+  CollectionReference<Map<String, dynamic>> get recettes => col('recettes');
   CollectionReference<Map<String, dynamic>> get sessions => col('sessions');
   CollectionReference<Map<String, dynamic>> lignes(String idSession) => sessions.doc(idSession).collection('lignes');
   CollectionReference<Map<String, dynamic>> get factures => col('factures');

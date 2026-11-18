@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/format.dart';
+import '../../core/stock_calc.dart';
 import '../../models/modeles.dart';
 import '../../services/commande_service.dart';
 import '../../state/providers.dart';
@@ -39,7 +40,7 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
   int get _totalPanier => _panier.fold(0, (s, e) => s + e.montant);
 
   void _ajouter(Article a) {
-    if (!a.vendable) return;
+    if (!a.estVendable(ref.read(portionsProvider))) return;
     setState(() {
       final existant = _panier.where((e) => e.article.id == a.id && e.note.isEmpty);
       if (existant.isNotEmpty) {
@@ -86,7 +87,10 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
     final sessions = ref.watch(sessionsEnCoursProvider).value ?? const [];
     final session = sessions.where((s) => s.id == _idSession).firstOrNull;
     final articles = ref.watch(articlesProvider).value ?? const [];
-    final categories = ref.watch(categoriesProvider).value ?? const [];
+    // Seules les catégories qui ont des articles au menu (pas « Ingrédients »).
+    final categories = (ref.watch(categoriesProvider).value ?? const <Categorie>[])
+        .where((c) => articles.any((a) => a.auMenu && a.idCategorie == c.id))
+        .toList();
     final titre = widget.table != null
         ? 'Table ${session?.numeroTable ?? widget.table!.numero}'
         : (session?.numeroTable ?? 'À emporter');
@@ -99,6 +103,7 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
       onCategorie: (c) => setState(() => _categorie = c),
       onArticle: _ajouter,
       favoris: _favoris,
+      portions: ref.watch(portionsProvider),
       quantites: {
         for (final e in _panier)
           e.article.id: _panier.where((x) => x.article.id == e.article.id).fold(0, (n, x) => n + x.quantite),
@@ -140,6 +145,7 @@ class _GrilleArticles extends StatelessWidget {
   final String categorie;
   final String favoris;
   final Map<String, int> quantites;
+  final Map<String, int> portions;
   final ValueChanged<String> onCategorie;
   final ValueChanged<Article> onArticle;
   const _GrilleArticles({
@@ -148,13 +154,14 @@ class _GrilleArticles extends StatelessWidget {
     required this.categorie,
     required this.favoris,
     required this.quantites,
+    required this.portions,
     required this.onCategorie,
     required this.onArticle,
   });
 
   @override
   Widget build(BuildContext context) {
-    final actifs = articles.where((a) => a.actif).toList();
+    final actifs = articles.where((a) => a.auMenu).toList();
     final indexCat = {for (var i = 0; i < categories.length; i++) categories[i].id: i};
     final List<Article> affiches;
     if (categorie == favoris) {
@@ -206,6 +213,7 @@ class _GrilleArticles extends StatelessWidget {
                     couleur: couleurCategorie(indexCat[a.idCategorie] ?? 0),
                     icone: iconeCategorie(categories.where((c) => c.id == a.idCategorie).firstOrNull?.nom ?? ''),
                     quantite: quantites[a.id] ?? 0,
+                    portions: portions,
                     onTap: onArticle,
                   ),
                 );
@@ -268,8 +276,10 @@ class _BoutonArticle extends StatelessWidget {
   final Color couleur;
   final IconData icone;
   final int quantite;
+  final Map<String, int> portions;
   final ValueChanged<Article> onTap;
   const _BoutonArticle({
+    required this.portions,
     required this.article,
     required this.couleur,
     required this.icone,
@@ -280,8 +290,9 @@ class _BoutonArticle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = article;
-    final ok = a.vendable;
-    final faible = ok && a.suiviStock && a.stock <= a.seuilAlerte;
+    final ok = a.estVendable(portions);
+    final reste = a.reste(portions);
+    final faible = ok && reste != null && reste <= (a.aRecette ? 3 : a.seuilAlerte);
     final rayon = BorderRadius.circular(identite.arrondi);
     return Semantics(
       button: true,
@@ -356,7 +367,7 @@ class _BoutonArticle extends StatelessWidget {
                                   ),
                                 if (faible)
                                   Text(
-                                    'reste ${a.stock}',
+                                    'reste ${qte(reste)}',
                                     style: TextStyle(color: couleurOccupee, fontWeight: FontWeight.w800, fontSize: 12),
                                   ),
                               ],

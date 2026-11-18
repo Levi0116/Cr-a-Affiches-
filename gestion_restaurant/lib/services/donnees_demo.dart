@@ -91,7 +91,67 @@ Future<void> remplirDemo(RestoDb db) async {
       'unitesParCasier': upc,
       'ordre': ordre++,
       'nbVentes': 0,
+      // Bouteilles en verre consignées (bières, sucreries).
+      'consigne': cat == 'c-bieres' || cat == 'c-sucreries',
+      'vides': 0,
+      'aRecette': false,
     });
+  }
+
+  // Ingrédients (matières premières) pour les fiches techniques.
+  b.set(db.categories.doc('c-ingredients'), {'nom': 'Ingrédients', 'ordre': 99});
+  // (id, nom, unité, stock, seuil, coût unitaire)
+  const ingredients = [
+    ('i-poulet', 'Poulet entier', 'pièce', 12, 3, 2000),
+    ('i-poisson', 'Poisson (carpe)', 'pièce', 8, 2, 2200),
+    ('i-oignon', 'Oignons', 'kg', 5, 1, 600),
+    ('i-attieke', 'Attiéké', 'portion', 40, 10, 150),
+    ('i-piment', 'Piment frais', 'kg', 1, 0.2, 1500),
+  ];
+  for (final (id, nom, unite, stock, seuil, cout) in ingredients) {
+    b.set(db.articles.doc(id), {
+      'nom': nom,
+      'idCategorie': 'c-ingredients',
+      'prixVente': 0,
+      'type': 'ingredient',
+      'unite': unite,
+      'stock': stock,
+      'seuilAlerte': seuil,
+      'disponible': true,
+      'actif': true,
+      'suiviStock': true,
+      'coutMoyen': cout,
+      'unitesParCasier': 0,
+      'ordre': ordre++,
+      'nbVentes': 0,
+      'consigne': false,
+      'vides': 0,
+      'aRecette': false,
+    });
+  }
+  // Fiches techniques (section 3.3) : « Poulet braisé » = 1 poulet +
+  // 0,1 kg d'oignons + 1 portion d'attiéké.
+  const recettes = {
+    'a-poulet': [
+      ('i-poulet', 'Poulet entier', 1, 'pièce'),
+      ('i-oignon', 'Oignons', 0.1, 'kg'),
+      ('i-attieke', 'Attiéké', 1, 'portion'),
+    ],
+    'a-poisson': [
+      ('i-poisson', 'Poisson (carpe)', 1, 'pièce'),
+      ('i-oignon', 'Oignons', 0.1, 'kg'),
+      ('i-piment', 'Piment frais', 0.02, 'kg'),
+      ('i-attieke', 'Attiéké', 1, 'portion'),
+    ],
+  };
+  for (final e in recettes.entries) {
+    b.set(db.recettes.doc(e.key), {
+      'idArticle': e.key,
+      'ingredients': [
+        for (final (id, nom, q, u) in e.value) {'idArticle': id, 'nom': nom, 'quantite': q, 'unite': u},
+      ],
+    });
+    b.update(db.articles.doc(e.key), {'aRecette': true, 'suiviStock': false});
   }
   b.set(db.fournisseurs.doc('f-solibra'), {'nom': 'Solibra', 'telephone': ''});
   b.set(db.fournisseurs.doc('f-brassivoire'), {'nom': 'Brassivoire', 'telephone': ''});

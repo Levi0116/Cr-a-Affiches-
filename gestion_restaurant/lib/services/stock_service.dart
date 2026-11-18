@@ -33,6 +33,7 @@ class StockService {
     int unites = 0,
     required int prixAchatUnitaire,
     String fournisseur = '',
+    int videsRendus = 0,
   }) async {
     final qte = casiersEnUnites(casiers: casiers, unitesParCasier: article.unitesParCasier, unitesIsolees: unites);
     if (qte <= 0) throw ErreurMetier('Quantité nulle');
@@ -57,6 +58,58 @@ class StockService {
     });
     _mouvement(b, a, article, 'entree', qte, 'Livraison${fournisseur.isEmpty ? '' : ' $fournisseur'}');
     b.update(db.articles.doc(article.id), {'coutMoyen': cout});
+    if (videsRendus > 0) _retourVides(b, a, article, videsRendus, fournisseur);
+    await db.envoyerSansBloquer(b);
+  }
+
+  void _retourVides(WriteBatch b, Acteur a, Article article, int bouteilles, String fournisseur) {
+    b.update(db.articles.doc(article.id), {'vides': FieldValue.increment(-bouteilles)});
+    b.set(db.col('mouvementsConsignes').doc(db.nouvelId()), {
+      ...db.meta(a),
+      'idArticle': article.id,
+      'nomArticle': article.nom,
+      'type': 'retour',
+      'quantite': -bouteilles,
+      'fournisseur': fournisseur,
+      'auteur': a.nom,
+    });
+  }
+
+  /// Consignes : bouteilles vides rendues au fournisseur.
+  Future<void> rendreVides(Acteur a, Article article, int bouteilles, {String fournisseur = ''}) async {
+    if (bouteilles <= 0) throw ErreurMetier('Quantité invalide');
+    if (bouteilles > article.vides) {
+      throw ErreurMetier('Seulement ${article.vides} vide(s) en attente pour ${article.nom}');
+    }
+    final b = db.fs.batch();
+    _retourVides(b, a, article, bouteilles, fournisseur);
+    db.audit(
+      b,
+      a,
+      'retour_consignes',
+      '$bouteilles vide(s) ${article.nom}${fournisseur.isEmpty ? '' : ' → $fournisseur'}',
+    );
+    await db.envoyerSansBloquer(b);
+  }
+
+  /// Correction du nombre de vides comptés (casse, bouteille perdue…).
+  Future<void> corrigerVides(Acteur a, Article article, int comptes, String motif) async {
+    if (comptes < 0) throw ErreurMetier('Quantité invalide');
+    if (motif.trim().isEmpty) throw ErreurMetier('Le motif est obligatoire');
+    final ecart = comptes - article.vides;
+    if (ecart == 0) return;
+    final b = db.fs.batch();
+    b.update(db.articles.doc(article.id), {'vides': FieldValue.increment(ecart)});
+    b.set(db.col('mouvementsConsignes').doc(db.nouvelId()), {
+      ...db.meta(a),
+      'idArticle': article.id,
+      'nomArticle': article.nom,
+      'type': 'correction',
+      'quantite': ecart,
+      'motif': motif.trim(),
+      'auteur': a.nom,
+    });
+    db.audit(b, a, 'correction_consignes', '${article.nom} : écart $ecart ($motif)');
     await db.envoyerSansBloquer(b);
   }
 

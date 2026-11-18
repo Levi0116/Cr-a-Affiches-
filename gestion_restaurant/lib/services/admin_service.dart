@@ -97,22 +97,30 @@ class AdminService {
       'annulationDemandee': false,
     });
     b.update(db.sessions.doc(idSession), {'total': FieldValue.increment(-ligne.montant)});
-    final art = await db.articles.doc(ligne.idArticle).get();
-    if (art.exists && Article.fromDoc(art).suiviStock) {
-      b.set(db.mouvementsStock.doc(db.nouvelId()), {
-        ...db.meta(admin),
-        'idArticle': ligne.idArticle,
-        'nomArticle': ligne.nom,
-        'type': 'annulation',
-        'quantite': ligne.quantite,
-        'auteur': d.demandeur,
-        'motif': d.motif,
-      });
-      b.update(db.articles.doc(ligne.idArticle), {
-        'stock': FieldValue.increment(ligne.quantite),
-        'nbVentes': FieldValue.increment(-ligne.quantite),
-      });
+    final snap = await db.articles.doc(ligne.idArticle).get();
+    final article = snap.exists ? Article.fromDoc(snap) : null;
+    void mouvement(String idArticle, String nom, num quantite) => b.set(db.mouvementsStock.doc(db.nouvelId()), {
+      ...db.meta(admin),
+      'idArticle': idArticle,
+      'nomArticle': nom,
+      'type': 'annulation',
+      'quantite': quantite,
+      'auteur': d.demandeur,
+      'motif': '${d.motif} (${ligne.quantite} × ${ligne.nom})',
+    });
+    final maj = <String, dynamic>{'nbVentes': FieldValue.increment(-ligne.quantite)};
+    if (ligne.deductions.isNotEmpty) {
+      // Plat à fiche technique : on remet exactement ce qui a été déduit.
+      for (final i in ligne.deductions) {
+        mouvement(i.idArticle, i.nom, i.quantite);
+        b.update(db.articles.doc(i.idArticle), {'stock': FieldValue.increment(i.quantite)});
+      }
+    } else if (article?.suiviStock ?? false) {
+      mouvement(ligne.idArticle, ligne.nom, ligne.quantite);
+      maj['stock'] = FieldValue.increment(ligne.quantite);
     }
+    if (article?.consigne ?? false) maj['vides'] = FieldValue.increment(-ligne.quantite);
+    if (article != null) b.update(db.articles.doc(ligne.idArticle), maj);
   }
 
   Future<void> _appliquerOffert(WriteBatch b, Acteur admin, DemandeValidation d) async {
@@ -176,6 +184,32 @@ class AdminService {
         db.audit(b, a, 'changement_prix', '${art.nom} : ${ancien.prixVente} F → ${art.prixVente} F');
       }
     }
+    await db.envoyerSansBloquer(b);
+  }
+
+  /// Fiche technique d'un plat : liste des ingrédients par portion.
+  /// Une fiche vide repasse le plat en « portions disponibles ».
+  Future<void> enregistrerRecette(Acteur a, Article plat, List<Ingredient> ingredients) async {
+    _exigerAdmin(a);
+    final valides = ingredients.where((i) => i.quantite > 0 && i.idArticle != plat.id).toList();
+    final b = db.fs.batch();
+    b.set(db.recettes.doc(plat.id), {
+      'idArticle': plat.id,
+      'nom': plat.nom,
+      'ingredients': [for (final i in valides) i.toMap()],
+      ...db.modif(a),
+    });
+    b.update(db.articles.doc(plat.id), {
+      'aRecette': valides.isNotEmpty,
+      if (valides.isNotEmpty) 'suiviStock': false,
+      ...db.modif(a),
+    });
+    db.audit(
+      b,
+      a,
+      'fiche_technique',
+      '${plat.nom} = ${valides.map((i) => '${i.quantite} ${i.unite} ${i.nom}'.replaceAll('  ', ' ')).join(' + ')}',
+    );
     await db.envoyerSansBloquer(b);
   }
 
