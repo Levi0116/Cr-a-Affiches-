@@ -37,8 +37,7 @@ class CommandeService {
       }
     }
     if (session != null && session.statut != StatutSession.ouverte) {
-      throw ErreurMetier(
-          "L'addition a déjà été demandée : impossible d'ajouter des articles");
+      throw ErreurMetier("L'addition a déjà été demandée : impossible d'ajouter des articles");
     }
 
     final b = db.fs.batch();
@@ -63,10 +62,7 @@ class CommandeService {
         'idsFactures': <String>[],
       });
       if (table != null) {
-        b.update(db.tables.doc(table.id), {
-          'statut': StatutTable.occupee.name,
-          'idSession': idSession,
-        });
+        b.update(db.tables.doc(table.id), {'statut': StatutTable.occupee.name, 'idSession': idSession});
       }
     } else {
       idSession = session.id;
@@ -87,13 +83,8 @@ class CommandeService {
         heure: maintenant,
       );
       total += ligne.montant;
-      b.set(db.lignes(idSession).doc(ligne.id), {
-        ...db.meta(serveuse),
-        ...ligne.toMap(),
-      });
-      final majArticle = <String, dynamic>{
-        'nbVentes': FieldValue.increment(e.quantite),
-      };
+      b.set(db.lignes(idSession).doc(ligne.id), {...db.meta(serveuse), ...ligne.toMap()});
+      final majArticle = <String, dynamic>{'nbVentes': FieldValue.increment(e.quantite)};
       if (e.article.suiviStock) {
         // Le stock ne se modifie jamais directement : un mouvement + un
         // décrément, qui s'additionnent sans conflit même hors ligne.
@@ -141,23 +132,15 @@ class CommandeService {
       throw ErreurMetier('La table ${destination.numero} est occupée');
     }
     final b = db.fs.batch();
-    b.update(db.sessions.doc(s.id), {
-      'idTable': destination.id,
-      'numeroTable': destination.numero,
-      ...db.modif(a),
-    });
+    b.update(db.sessions.doc(s.id), {'idTable': destination.id, 'numeroTable': destination.numero, ...db.modif(a)});
     b.update(db.tables.doc(destination.id), {
-      'statut': s.statut == StatutSession.ouverte
-          ? StatutTable.occupee.name
-          : StatutTable.addition.name,
+      'statut': s.statut == StatutSession.ouverte ? StatutTable.occupee.name : StatutTable.addition.name,
       'idSession': s.id,
     });
     if (s.idTable != null) {
-      b.update(db.tables.doc(s.idTable),
-          {'statut': StatutTable.libre.name, 'idSession': null});
+      b.update(db.tables.doc(s.idTable), {'statut': StatutTable.libre.name, 'idSession': null});
     }
-    db.audit(b, a, 'transfert',
-        'Table ${s.numeroTable} → ${destination.numero}');
+    db.audit(b, a, 'transfert', 'Table ${s.numeroTable} → ${destination.numero}');
     await db.envoyerSansBloquer(b);
   }
 
@@ -165,17 +148,13 @@ class CommandeService {
   /// la table source est libérée.
   Future<void> fusionner(Acteur a, SessionTable source, SessionTable cible) async {
     if (source.id == cible.id) return;
-    if (source.statut != StatutSession.ouverte ||
-        cible.statut != StatutSession.ouverte) {
+    if (source.statut != StatutSession.ouverte || cible.statut != StatutSession.ouverte) {
       throw ErreurMetier('Fusion possible seulement entre tables ouvertes');
     }
     final lignes = await db.lignes(source.id).get();
     final b = db.fs.batch();
     for (final l in lignes.docs) {
-      b.set(db.lignes(cible.id).doc(l.id), {
-        ...l.data(),
-        'fusionDepuis': source.numeroTable,
-      });
+      b.set(db.lignes(cible.id).doc(l.id), {...l.data(), 'fusionDepuis': source.numeroTable});
     }
     b.update(db.sessions.doc(cible.id), {
       'total': FieldValue.increment(source.total),
@@ -188,17 +167,14 @@ class CommandeService {
       ...db.modif(a),
     });
     if (source.idTable != null) {
-      b.update(db.tables.doc(source.idTable),
-          {'statut': StatutTable.libre.name, 'idSession': null});
+      b.update(db.tables.doc(source.idTable), {'statut': StatutTable.libre.name, 'idSession': null});
     }
-    db.audit(b, a, 'fusion',
-        'Table ${source.numeroTable} fusionnée dans ${cible.numeroTable}');
+    db.audit(b, a, 'fusion', 'Table ${source.numeroTable} fusionnée dans ${cible.numeroTable}');
     await db.envoyerSansBloquer(b);
   }
 
   /// Demande d'annulation d'un article déjà validé : part vers l'admin.
-  Future<void> demanderAnnulation(
-      Acteur a, SessionTable s, LigneCommande l, String motif) async {
+  Future<void> demanderAnnulation(Acteur a, SessionTable s, LigneCommande l, String motif) async {
     if (motif.trim().isEmpty) throw ErreurMetier('Le motif est obligatoire');
     if (l.annulee) return;
     final b = db.fs.batch();
@@ -219,8 +195,7 @@ class CommandeService {
       },
     });
     b.update(db.lignes(s.id).doc(l.id), {'annulationDemandee': true});
-    db.audit(b, a, 'demande_annulation',
-        '${l.quantite} × ${l.nom} (table ${s.numeroTable}) : $motif');
+    db.audit(b, a, 'demande_annulation', '${l.quantite} × ${l.nom} (table ${s.numeroTable}) : $motif');
     await db.envoyerSansBloquer(b);
   }
 }

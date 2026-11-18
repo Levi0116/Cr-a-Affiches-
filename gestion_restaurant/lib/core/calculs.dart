@@ -20,19 +20,9 @@ class Remise {
   final int valeur; // en F ou en %
   final String motif;
   final String validePar;
-  const Remise({
-    required this.type,
-    required this.valeur,
-    required this.motif,
-    required this.validePar,
-  });
+  const Remise({required this.type, required this.valeur, required this.motif, required this.validePar});
 
-  Map<String, dynamic> toMap() => {
-        'type': type.name,
-        'valeur': valeur,
-        'motif': motif,
-        'validePar': validePar,
-      };
+  Map<String, dynamic> toMap() => {'type': type.name, 'valeur': valeur, 'motif': motif, 'validePar': validePar};
 
   static Remise? fromMap(Object? m) {
     if (m is! Map) return null;
@@ -50,25 +40,18 @@ class Totaux {
   final int sousTotal;
   final int remise;
   final int total;
+
   /// Part de TVA incluse dans le total (prix saisis TTC). 0 si non soumis.
   final int tva;
-  const Totaux({
-    required this.sousTotal,
-    required this.remise,
-    required this.total,
-    required this.tva,
-  });
+  const Totaux({required this.sousTotal, required this.remise, required this.total, required this.tva});
 }
 
-int sousTotal(Iterable<LigneCalcul> lignes) =>
-    lignes.fold(0, (s, l) => s + l.montant);
+int sousTotal(Iterable<LigneCalcul> lignes) => lignes.fold(0, (s, l) => s + l.montant);
 
 /// Montant de la remise, arrondi au franc et plafonné au sous-total.
 int montantRemise(int sousTotal, Remise? remise) {
   if (remise == null || remise.valeur <= 0) return 0;
-  final brut = remise.type == TypeRemise.montant
-      ? remise.valeur
-      : (sousTotal * remise.valeur / 100).round();
+  final brut = remise.type == TypeRemise.montant ? remise.valeur : (sousTotal * remise.valeur / 100).round();
   return brut.clamp(0, sousTotal);
 }
 
@@ -78,20 +61,11 @@ int tvaIncluse(int totalTtc, double tauxTva) {
   return (totalTtc * tauxTva / (100 + tauxTva)).round();
 }
 
-Totaux calculerTotaux(
-  Iterable<LigneCalcul> lignes, {
-  Remise? remise,
-  double tauxTva = 0,
-}) {
+Totaux calculerTotaux(Iterable<LigneCalcul> lignes, {Remise? remise, double tauxTva = 0}) {
   final st = sousTotal(lignes);
   final r = montantRemise(st, remise);
   final total = st - r;
-  return Totaux(
-    sousTotal: st,
-    remise: r,
-    total: total,
-    tva: tvaIncluse(total, tauxTva),
-  );
+  return Totaux(sousTotal: st, remise: r, total: total, tva: tvaIncluse(total, tauxTva));
 }
 
 /// Monnaie à rendre = montant reçu − total. Lève une erreur si insuffisant.
@@ -112,11 +86,7 @@ List<int> partsEgales(int total, int nombreParts) {
 }
 
 /// Conversion d'une livraison en casiers + bouteilles vers des unités.
-int casiersEnUnites({
-  required int casiers,
-  required int unitesParCasier,
-  int unitesIsolees = 0,
-}) {
+int casiersEnUnites({required int casiers, required int unitesParCasier, int unitesIsolees = 0}) {
   if (casiers < 0 || unitesIsolees < 0 || unitesParCasier < 0) {
     throw ArgumentError('Quantités négatives interdites');
   }
@@ -133,13 +103,10 @@ int nouveauCoutMoyen({
 }) {
   if (quantiteEntree <= 0) return coutMoyenActuel;
   if (stockActuel <= 0) return prixAchatUnitaire;
-  final valeur =
-      stockActuel * coutMoyenActuel + quantiteEntree * prixAchatUnitaire;
+  final valeur = stockActuel * coutMoyenActuel + quantiteEntree * prixAchatUnitaire;
   return (valeur / (stockActuel + quantiteEntree)).round();
 }
 
 /// Format des numéros : FAC-AAAA-NNNNNN et AV-AAAA-NNNNNN (section 4.4).
-String numeroFacture(int annee, int sequence) =>
-    'FAC-$annee-${sequence.toString().padLeft(6, '0')}';
-String numeroAvoir(int annee, int sequence) =>
-    'AV-$annee-${sequence.toString().padLeft(6, '0')}';
+String numeroFacture(int annee, int sequence) => 'FAC-$annee-${sequence.toString().padLeft(6, '0')}';
+String numeroAvoir(int annee, int sequence) => 'AV-$annee-${sequence.toString().padLeft(6, '0')}';

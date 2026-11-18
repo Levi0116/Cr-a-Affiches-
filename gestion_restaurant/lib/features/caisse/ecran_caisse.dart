@@ -9,6 +9,8 @@ import '../../services/impression/impression.dart';
 import '../../services/ticket.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
+import '../../theme/animations.dart';
+import '../../theme/identite.dart';
 import '../../widgets/commun.dart';
 
 Future<void> imprimer(BuildContext context, String html) async {
@@ -33,27 +35,25 @@ class EcranCaisse extends ConsumerWidget {
     });
     final corps = DefaultTabController(
       length: 4,
-      child: Column(children: [
-        const _BandeauJournee(),
-        const TabBar(isScrollable: true, tabs: [
-          Tab(text: 'Tables ouvertes'),
-          Tab(text: 'Factures du jour'),
-          Tab(text: 'Ardoises'),
-          Tab(text: 'Ouverture / clôture'),
-        ]),
-        const Expanded(
-          child: TabBarView(children: [
-            _TablesOuvertes(),
-            _FacturesDuJour(),
-            _Ardoises(),
-            _Journee(),
-          ]),
-        ),
-      ]),
+      child: Column(
+        children: [
+          const _BandeauJournee(),
+          const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(text: 'Tables ouvertes'),
+              Tab(text: 'Factures du jour'),
+              Tab(text: 'Ardoises'),
+              Tab(text: 'Ouverture / clôture'),
+            ],
+          ),
+          const Expanded(child: TabBarView(children: [_TablesOuvertes(), _FacturesDuJour(), _Ardoises(), _Journee()])),
+        ],
+      ),
     );
     if (!avecBarre) return corps;
     return Scaffold(
-      appBar: AppBar(title: const Text('Caisse'), actions: actionsBarre(context, ref)),
+      appBar: barreBraise(title: const Text('Caisse'), actions: actionsBarre(context, ref)),
       body: corps,
     );
   }
@@ -72,17 +72,13 @@ class _BandeauJournee extends ConsumerWidget {
         color: couleurLibre.withValues(alpha: 0.1),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: Text(
-            'Caisse ouverte depuis ${dateHeure(journee.ouverture)} · fond ${fcfa(journee.fond)} · encaissé ${fcfa(journee.totalEncaisse)}'),
+          'Caisse ouverte depuis ${dateHeure(journee.ouverture)} · fond ${fcfa(journee.fond)} · encaissé ${fcfa(journee.totalEncaisse)}',
+        ),
       );
     }
     return MaterialBanner(
       content: const Text('La caisse est fermée : saisissez le fond de caisse pour encaisser.'),
-      actions: [
-        FilledButton(
-          onPressed: () => ouvrirCaisse(context, ref),
-          child: const Text('Ouvrir la caisse'),
-        ),
-      ],
+      actions: [FilledButton(onPressed: () => ouvrirCaisse(context, ref), child: const Text('Ouvrir la caisse'))],
     );
   }
 }
@@ -90,8 +86,11 @@ class _BandeauJournee extends ConsumerWidget {
 Future<void> ouvrirCaisse(BuildContext context, WidgetRef ref) async {
   final fond = await demanderNombre(context, 'Ouverture de caisse', label: 'Fond de caisse (F)');
   if (fond == null || !context.mounted) return;
-  await essayer(context, () => ref.read(caisseServiceProvider).ouvrirCaisse(ref.read(acteurProvider)!, fond),
-      succes: 'Caisse ouverte');
+  await essayer(
+    context,
+    () => ref.read(caisseServiceProvider).ouvrirCaisse(ref.read(acteurProvider)!, fond),
+    succes: 'Caisse ouverte',
+  );
 }
 
 // ------------------------------------------------------------ Tables ouvertes
@@ -106,10 +105,10 @@ class _TablesOuvertesState extends ConsumerState<_TablesOuvertes> {
   String? _selection;
 
   int _priorite(SessionTable s) => switch (s.statut) {
-        StatutSession.addition => 0,
-        StatutSession.facturee => 1,
-        _ => 2,
-      };
+    StatutSession.addition => 0,
+    StatutSession.facturee => 1,
+    _ => 2,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +117,8 @@ class _TablesOuvertesState extends ConsumerState<_TablesOuvertes> {
       loading: () => const Chargement(),
       error: (e, _) => Chargement(erreur: e),
       data: (sessions) {
-        final triees = [...sessions]..sort((a, b) {
+        final triees = [...sessions]
+          ..sort((a, b) {
             final p = _priorite(a).compareTo(_priorite(b));
             return p != 0 ? p : a.ouverture.compareTo(b.ouverture);
           });
@@ -132,51 +132,69 @@ class _TablesOuvertesState extends ConsumerState<_TablesOuvertes> {
                 itemBuilder: (context, i) {
                   final s = triees[i];
                   final couleur = s.statut == StatutSession.ouverte ? couleurOccupee : couleurAddition;
-                  return ListTile(
-                    selected: s.id == _selection,
-                    leading: CircleAvatar(
-                      backgroundColor: couleur,
-                      foregroundColor: Colors.white,
-                      child: Text(s.aEmporter ? '🛍' : s.numeroTable,
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                  return Apparition(
+                    index: i,
+                    child: ListTile(
+                      selected: s.id == _selection,
+                      leading: Pulsation(
+                        active: s.statut == StatutSession.addition,
+                        couleur: couleur,
+                        rayon: BorderRadius.circular(30),
+                        child: CircleAvatar(
+                          backgroundColor: couleur,
+                          foregroundColor: Colors.white,
+                          child: s.aEmporter
+                              ? const Icon(Icons.shopping_bag_rounded)
+                              : Text(
+                                  s.numeroTable,
+                                  style: TextStyle(fontFamily: identite.policeTitres, fontWeight: FontWeight.w800),
+                                ),
+                        ),
+                      ),
+                      title: Text(
+                        s.aEmporter ? s.numeroTable : 'Table ${s.numeroTable}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text('${s.nomServeuse} · ouverte à ${heure(s.ouverture)} · ${s.nbTours} tour(s)'),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          MontantAnime(s.total, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                          if (s.statut == StatutSession.addition) Pastille('Addition demandée', couleurAddition),
+                          if (s.statut == StatutSession.facturee) Pastille('Facturée', couleurAddition),
+                        ],
+                      ),
+                      onTap: () {
+                        if (large) {
+                          setState(() => _selection = s.id);
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                appBar: barreBraise(title: Text('Table ${s.numeroTable}')),
+                                body: _DetailSessionParId(idSession: s.id),
+                              ),
+                            ),
+                          );
+                        }
+                      },
                     ),
-                    title: Text(s.aEmporter ? s.numeroTable : 'Table ${s.numeroTable}',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text('${s.nomServeuse} · ouverte à ${heure(s.ouverture)} · ${s.nbTours} tour(s)'),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(fcfa(s.total), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                        if (s.statut == StatutSession.addition) const Pastille('Addition demandée', couleurAddition),
-                        if (s.statut == StatutSession.facturee) const Pastille('Facturée', couleurAddition),
-                      ],
-                    ),
-                    onTap: () {
-                      if (large) {
-                        setState(() => _selection = s.id);
-                      } else {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => Scaffold(
-                            appBar: AppBar(title: Text('Table ${s.numeroTable}')),
-                            body: _DetailSessionParId(idSession: s.id),
-                          ),
-                        ));
-                      }
-                    },
                   );
                 },
               );
         if (!large) return liste;
-        return Row(children: [
-          SizedBox(width: 400, child: liste),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: choisie == null
-                ? const Center(child: Text('Choisissez une table'))
-                : DetailSession(session: choisie, key: ValueKey(choisie.id)),
-          ),
-        ]);
+        return Row(
+          children: [
+            SizedBox(width: 400, child: liste),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: choisie == null
+                  ? const Center(child: Text('Choisissez une table'))
+                  : DetailSession(session: choisie, key: ValueKey(choisie.id)),
+            ),
+          ],
+        );
       },
     );
   }
@@ -187,9 +205,7 @@ class _DetailSessionParId extends ConsumerWidget {
   const _DetailSessionParId({required this.idSession});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final s = (ref.watch(sessionsEnCoursProvider).value ?? const [])
-        .where((x) => x.id == idSession)
-        .firstOrNull;
+    final s = (ref.watch(sessionsEnCoursProvider).value ?? const []).where((x) => x.id == idSession).firstOrNull;
     if (s == null) return const Center(child: Text('Addition close'));
     return DetailSession(session: s);
   }
@@ -209,8 +225,7 @@ class DetailSession extends ConsumerWidget {
     final journee = ref.watch(journeeOuverteProvider).value;
     final acteur = ref.watch(acteurProvider)!;
     final aFacturer = lignes.where((l) => !l.annulee && l.idFacture == null).toList();
-    final tot = calculerTotaux(aFacturer.map((l) => l.calcul),
-        remise: s.remise, tauxTva: resto?.tauxTvaEffectif ?? 0);
+    final tot = calculerTotaux(aFacturer.map((l) => l.calcul), remise: s.remise, tauxTva: resto?.tauxTvaEffectif ?? 0);
     final tours = <int, List<LigneCommande>>{};
     for (final l in lignes) {
       tours.putIfAbsent(l.tour, () => []).add(l);
@@ -219,45 +234,53 @@ class DetailSession extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(s.aEmporter ? s.numeroTable : 'Table ${s.numeroTable}',
-            style: Theme.of(context).textTheme.headlineSmall),
-        Text('Serveuse : ${s.nomServeuse} · ouverte à ${heure(s.ouverture)}'
-            '${s.couverts > 0 ? ' · ${s.couverts} couverts' : ''}'),
+        Text(s.aEmporter ? s.numeroTable : 'Table ${s.numeroTable}', style: Theme.of(context).textTheme.headlineSmall),
+        Text(
+          'Serveuse : ${s.nomServeuse} · ouverte à ${heure(s.ouverture)}'
+          '${s.couverts > 0 ? ' · ${s.couverts} couverts' : ''}',
+        ),
         const SizedBox(height: 12),
         for (final e in tours.entries) ...[
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text('Tour ${e.key} · ${heure(e.value.first.heure)} · ${e.value.first.auteur}',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              'Tour ${e.key} · ${heure(e.value.first.heure)} · ${e.value.first.auteur}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
           for (final l in e.value)
             ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: Text('${l.quantite} × ${l.nom}${l.offert ? ' (offert)' : ''}'
-                  '${l.idFacture != null ? ' · facturé' : ''}',
-                  style: l.annulee
-                      ? const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey)
-                      : null),
+              title: Text(
+                '${l.quantite} × ${l.nom}${l.offert ? ' (offert)' : ''}'
+                '${l.idFacture != null ? ' · facturé' : ''}',
+                style: l.annulee ? const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey) : null,
+              ),
               subtitle: l.annulee
                   ? Text('Annulé : ${l.motifAnnulation} · validé par ${l.validePar}')
                   : (l.note.isNotEmpty ? Text('« ${l.note} »') : null),
-              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(fcfa(l.montant)),
-                if (!l.annulee && !l.offert && l.idFacture == null)
-                  PopupMenuButton<String>(
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'offert', child: Text('Offrir (validation admin)')),
-                    ],
-                    onSelected: (_) async {
-                      final motif = await demanderTexte(context, 'Offrir ${l.nom}', label: 'Motif');
-                      if (motif == null || !context.mounted) return;
-                      await essayer(context,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(fcfa(l.montant)),
+                  if (!l.annulee && !l.offert && l.idFacture == null)
+                    PopupMenuButton<String>(
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'offert', child: Text('Offrir (validation admin)')),
+                      ],
+                      onSelected: (_) async {
+                        final motif = await demanderTexte(context, 'Offrir ${l.nom}', label: 'Motif');
+                        if (motif == null || !context.mounted) return;
+                        await essayer(
+                          context,
                           () => ref.read(caisseServiceProvider).demanderOffert(acteur, s, l, motif),
-                          succes: 'Demande envoyée à l’administrateur');
-                    },
-                  ),
-              ]),
+                          succes: 'Demande envoyée à l’administrateur',
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
         ],
         const Divider(height: 32),
@@ -266,25 +289,29 @@ class DetailSession extends ConsumerWidget {
         if (tot.tva > 0) _ligneTotal('dont TVA', tot.tva),
         _ligneTotal('Reste à facturer', tot.total, gros: true),
         const SizedBox(height: 16),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          OutlinedButton.icon(
-            icon: const Icon(Icons.receipt_long),
-            label: const Text('Pré-addition'),
-            onPressed: resto == null || aFacturer.isEmpty
-                ? null
-                : () => imprimer(context, ticketPreAddition(resto, s, aFacturer, tot.total)),
-          ),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.percent),
-            label: const Text('Remise'),
-            onPressed: s.statut == StatutSession.facturee ? null : () => _demanderRemise(context, ref),
-          ),
-          FilledButton.icon(
-            icon: const Icon(Icons.request_quote),
-            label: const Text('Facture finale'),
-            onPressed: resto == null || aFacturer.isEmpty ? null : () => _facturer(context, ref, resto, aFacturer),
-          ),
-        ]),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('Pré-addition'),
+              onPressed: resto == null || aFacturer.isEmpty
+                  ? null
+                  : () => imprimer(context, ticketPreAddition(resto, s, aFacturer, tot.total)),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.percent),
+              label: const Text('Remise'),
+              onPressed: s.statut == StatutSession.facturee ? null : () => _demanderRemise(context, ref),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.request_quote),
+              label: const Text('Facture finale'),
+              onPressed: resto == null || aFacturer.isEmpty ? null : () => _facturer(context, ref, resto, aFacturer),
+            ),
+          ],
+        ),
         if (factures.isNotEmpty) ...[
           const Divider(height: 32),
           Text('Factures', style: Theme.of(context).textTheme.titleMedium),
@@ -295,13 +322,24 @@ class DetailSession extends ConsumerWidget {
   }
 
   Widget _ligneTotal(String libelle, int montant, {bool gros = false}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(children: [
-          Expanded(child: Text(libelle, style: TextStyle(fontSize: gros ? 20 : 15))),
-          Text(fcfa(montant),
-              style: TextStyle(fontSize: gros ? 26 : 15, fontWeight: gros ? FontWeight.bold : null)),
-        ]),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(libelle, style: TextStyle(fontSize: gros ? 20 : 15)),
+        ),
+        MontantAnime(
+          montant,
+          style: TextStyle(
+            fontFamily: gros ? identite.policeTitres : null,
+            fontSize: gros ? 30 : 15,
+            fontWeight: gros ? FontWeight.w800 : null,
+            color: gros ? identite.principale : null,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Future<void> _demanderRemise(BuildContext context, WidgetRef ref) async {
     var type = TypeRemise.montant;
@@ -312,25 +350,31 @@ class DetailSession extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
           title: const Text('Demander une remise'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            SegmentedButton<TypeRemise>(
-              segments: const [
-                ButtonSegment(value: TypeRemise.montant, label: Text('Montant (F)')),
-                ButtonSegment(value: TypeRemise.pourcentage, label: Text('Pourcentage')),
-              ],
-              selected: {type},
-              onSelectionChanged: (v) => setState(() => type = v.first),
-            ),
-            TextField(
-              controller: valeur,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(labelText: type == TypeRemise.montant ? 'Montant' : '%'),
-            ),
-            TextField(controller: motif, decoration: const InputDecoration(labelText: 'Motif (obligatoire)')),
-            const SizedBox(height: 8),
-            const Text('La remise sera appliquée après validation de l’administrateur.'),
-          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SegmentedButton<TypeRemise>(
+                segments: const [
+                  ButtonSegment(value: TypeRemise.montant, label: Text('Montant (F)')),
+                  ButtonSegment(value: TypeRemise.pourcentage, label: Text('Pourcentage')),
+                ],
+                selected: {type},
+                onSelectionChanged: (v) => setState(() => type = v.first),
+              ),
+              TextField(
+                controller: valeur,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(labelText: type == TypeRemise.montant ? 'Montant' : '%'),
+              ),
+              TextField(
+                controller: motif,
+                decoration: const InputDecoration(labelText: 'Motif (obligatoire)'),
+              ),
+              const SizedBox(height: 8),
+              const Text('La remise sera appliquée après validation de l’administrateur.'),
+            ],
+          ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
             FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Envoyer')),
@@ -341,14 +385,20 @@ class DetailSession extends ConsumerWidget {
     if (ok != true || !context.mounted) return;
     await essayer(
       context,
-      () => ref.read(caisseServiceProvider).demanderRemise(ref.read(acteurProvider)!, session,
-          type: type, valeur: int.tryParse(valeur.text) ?? 0, motif: motif.text),
+      () => ref
+          .read(caisseServiceProvider)
+          .demanderRemise(
+            ref.read(acteurProvider)!,
+            session,
+            type: type,
+            valeur: int.tryParse(valeur.text) ?? 0,
+            motif: motif.text,
+          ),
       succes: 'Demande de remise envoyée',
     );
   }
 
-  Future<void> _facturer(
-      BuildContext context, WidgetRef ref, Restaurant resto, List<LigneCommande> aFacturer) async {
+  Future<void> _facturer(BuildContext context, WidgetRef ref, Restaurant resto, List<LigneCommande> aFacturer) async {
     final mode = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -385,11 +435,12 @@ class DetailSession extends ConsumerWidget {
     await essayer(
       context,
       () => caisse.emettreFactures(
-          caissier: ref.read(acteurProvider)!,
-          session: session,
-          restaurant: resto,
-          idsLignes: ids,
-          nombreParts: parts),
+        caissier: ref.read(acteurProvider)!,
+        session: session,
+        restaurant: resto,
+        idsLignes: ids,
+        nombreParts: parts,
+      ),
       succes: 'Facture émise : encaissez ou mettez en ardoise',
     );
   }
@@ -405,15 +456,18 @@ class DetailSession extends ConsumerWidget {
             title: const Text('Articles de cette part'),
             content: SizedBox(
               width: 400,
-              child: ListView(shrinkWrap: true, children: [
-                for (final l in lignes)
-                  CheckboxListTile(
-                    value: choix.contains(l.id),
-                    onChanged: (v) => setState(() => v! ? choix.add(l.id) : choix.remove(l.id)),
-                    title: Text('${l.quantite} × ${l.nom}'),
-                    secondary: Text(fcfa(l.montant)),
-                  ),
-              ]),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final l in lignes)
+                    CheckboxListTile(
+                      value: choix.contains(l.id),
+                      onChanged: (v) => setState(() => v! ? choix.add(l.id) : choix.remove(l.id)),
+                      title: Text('${l.quantite} × ${l.nom}'),
+                      secondary: Text(fcfa(l.montant)),
+                    ),
+                ],
+              ),
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
@@ -445,52 +499,65 @@ class CarteFacture extends ConsumerWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(
-              child: Text('${f.numero}${f.partie != null ? ' (part ${f.partie})' : ''}',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${f.numero}${f.partie != null ? ' (part ${f.partie})' : ''}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Pastille(libelle, couleur),
+              ],
             ),
-            Pastille(libelle, couleur),
-          ]),
-          Text('Table ${f.numeroTable} · ${dateHeure(f.date)} · ${f.nomCaissier}'),
-          Text(fcfa(f.total), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          if (f.statut == StatutFacture.payee)
-            Text('Reçu ${fcfa(f.montantRecu)} · rendu ${fcfa(f.monnaieRendue)}'),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            if (f.statut == StatutFacture.emise) ...[
-              FilledButton.icon(
-                icon: const Icon(Icons.payments),
-                label: const Text('Encaisser'),
-                onPressed: journee == null || resto == null
-                    ? () => afficherMessage(context, 'Ouvrez d’abord la caisse', erreur: true)
-                    : () => _encaisser(context, ref, resto),
-              ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.menu_book),
-                label: const Text('Ardoise'),
-                onPressed: resto == null ? null : () => _ardoise(context, ref, resto),
-              ),
-            ] else
-              OutlinedButton.icon(
-                icon: const Icon(Icons.print),
-                label: const Text('Duplicata'),
-                onPressed: resto == null
-                    ? null
-                    : () async {
-                        await ref.read(caisseServiceProvider).noterReimpression(acteur, f);
-                        if (context.mounted) await imprimer(context, ticketFacture(resto, f, duplicata: true));
-                      },
-              ),
-            if (acteur.estAdmin && f.statut == StatutFacture.payee)
-              OutlinedButton.icon(
-                icon: const Icon(Icons.undo),
-                label: const Text('Avoir'),
-                onPressed: () => _avoir(context, ref),
-              ),
-          ]),
-        ]),
+            Text('Table ${f.numeroTable} · ${dateHeure(f.date)} · ${f.nomCaissier}'),
+            Text(
+              fcfa(f.total),
+              style: TextStyle(fontFamily: identite.policeTitres, fontSize: 24, fontWeight: FontWeight.w800),
+            ),
+            if (f.statut == StatutFacture.payee) Text('Reçu ${fcfa(f.montantRecu)} · rendu ${fcfa(f.monnaieRendue)}'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (f.statut == StatutFacture.emise) ...[
+                  FilledButton.icon(
+                    icon: const Icon(Icons.payments),
+                    label: const Text('Encaisser'),
+                    onPressed: journee == null || resto == null
+                        ? () => afficherMessage(context, 'Ouvrez d’abord la caisse', erreur: true)
+                        : () => _encaisser(context, ref, resto),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.menu_book),
+                    label: const Text('Ardoise'),
+                    onPressed: resto == null ? null : () => _ardoise(context, ref, resto),
+                  ),
+                ] else
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.print),
+                    label: const Text('Duplicata'),
+                    onPressed: resto == null
+                        ? null
+                        : () async {
+                            await ref.read(caisseServiceProvider).noterReimpression(acteur, f);
+                            if (context.mounted) await imprimer(context, ticketFacture(resto, f, duplicata: true));
+                          },
+                  ),
+                if (acteur.estAdmin && f.statut == StatutFacture.payee)
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.undo),
+                    label: const Text('Avoir'),
+                    onPressed: () => _avoir(context, ref),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -500,64 +567,90 @@ class CarteFacture extends ConsumerWidget {
     final ctrl = TextEditingController();
     final recu = await showDialog<int>(
       context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setState) {
-        final montant = int.tryParse(ctrl.text) ?? 0;
-        final monnaie = montant - f.total;
-        // Billets courants en FCFA.
-        final suggestions = <int>{
-          f.total,
-          for (final b in [500, 1000, 2000, 5000, 10000])
-            if (b >= f.total) b else ((f.total + b - 1) ~/ b) * b,
-        }.toList()
-          ..sort();
-        return AlertDialog(
-          title: Text('Encaisser ${fcfa(f.total)}'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(fontSize: 28),
-              decoration: const InputDecoration(labelText: 'Montant reçu (F)'),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 8),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              for (final s in suggestions.take(5))
-                ActionChip(
-                  label: Text(fcfa(s)),
-                  onPressed: () => setState(() => ctrl.text = '$s'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          final montant = int.tryParse(ctrl.text) ?? 0;
+          final monnaie = montant - f.total;
+          // Billets courants en FCFA.
+          final suggestions = <int>{
+            f.total,
+            for (final b in [500, 1000, 2000, 5000, 10000])
+              if (b >= f.total) b else ((f.total + b - 1) ~/ b) * b,
+          }.toList()..sort();
+          return AlertDialog(
+            title: Text('Encaisser ${fcfa(f.total)}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: const TextStyle(fontSize: 28),
+                  decoration: const InputDecoration(labelText: 'Montant reçu (F)'),
+                  onChanged: (_) => setState(() {}),
                 ),
-            ]),
-            const SizedBox(height: 16),
-            Text(
-              monnaie >= 0 ? 'Monnaie à rendre : ${fcfa(monnaie)}' : 'Manque ${fcfa(-monnaie)}',
-              style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: monnaie >= 0 ? couleurLibre : Colors.red),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final s in suggestions.take(5))
+                      ActionChip(label: Text(fcfa(s)), onPressed: () => setState(() => ctrl.text = '$s')),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                AnimatedContainer(
+                  duration: duree(context, 250),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: (monnaie >= 0 ? couleurLibre : identite.erreur).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(identite.arrondi),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        monnaie >= 0 ? 'Monnaie à rendre' : 'Il manque',
+                        style: TextStyle(
+                          color: monnaie >= 0 ? couleurLibre : identite.erreur,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      MontantAnime(
+                        monnaie.abs(),
+                        style: TextStyle(
+                          fontFamily: identite.policeTitres,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          color: monnaie >= 0 ? couleurLibre : identite.erreur,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-            FilledButton(
-              onPressed: monnaie >= 0 && montant > 0 ? () => Navigator.pop(ctx, montant) : null,
-              child: const Text('Valider le paiement'),
-            ),
-          ],
-        );
-      }),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+              FilledButton(
+                onPressed: monnaie >= 0 && montant > 0 ? () => Navigator.pop(ctx, montant) : null,
+                child: const Text('Valider le paiement'),
+              ),
+            ],
+          );
+        },
+      ),
     );
     if (recu == null || !context.mounted) return;
     final caisse = ref.read(caisseServiceProvider);
     final monnaie = await essayer(
       context,
-      () => caisse.encaisser(
-          caissier: ref.read(acteurProvider)!, facture: f, montantRecu: recu, journee: journee!),
+      () => caisse.encaisser(caissier: ref.read(acteurProvider)!, facture: f, montantRecu: recu, journee: journee!),
     );
     if (monnaie == null || !context.mounted) return;
-    afficherMessage(context, 'Payée · monnaie à rendre : ${fcfa(monnaie)}');
+    tamponner(context, 'PAYÉE');
+    afficherMessage(context, 'Monnaie à rendre : ${fcfa(monnaie)}');
     final payee = Facture.fromDoc(await ref.read(dbProvider).factures.doc(f.id).get());
     if (context.mounted) await imprimer(context, ticketFacture(resto, payee));
   }
@@ -572,22 +665,29 @@ class CarteFacture extends ConsumerWidget {
         title: const Text('Mettre en ardoise (crédit client)'),
         content: SizedBox(
           width: 420,
-          child: ListView(shrinkWrap: true, children: [
-            if (ardoises.isNotEmpty) const Text('Client existant'),
-            for (final a in ardoises)
-              ListTile(
-                title: Text(a.client),
-                subtitle: Text('${a.telephone} · doit ${fcfa(a.montantDu)}'),
-                onTap: () => Navigator.pop(ctx, a),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              if (ardoises.isNotEmpty) const Text('Client existant'),
+              for (final a in ardoises)
+                ListTile(
+                  title: Text(a.client),
+                  subtitle: Text('${a.telephone} · doit ${fcfa(a.montantDu)}'),
+                  onTap: () => Navigator.pop(ctx, a),
+                ),
+              const Divider(),
+              const Text('Nouveau client'),
+              TextField(
+                controller: client,
+                decoration: const InputDecoration(labelText: 'Nom'),
               ),
-            const Divider(),
-            const Text('Nouveau client'),
-            TextField(controller: client, decoration: const InputDecoration(labelText: 'Nom')),
-            TextField(
+              TextField(
                 controller: tel,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Téléphone')),
-          ]),
+                decoration: const InputDecoration(labelText: 'Téléphone'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
@@ -598,35 +698,38 @@ class CarteFacture extends ConsumerWidget {
     if (choix == null || !context.mounted) return;
     final caisse = ref.read(caisseServiceProvider);
     final acteur = ref.read(acteurProvider)!;
-    final ok = await essayer(
-      context,
-      () async {
-        await caisse.mettreEnArdoise(
-          caissier: acteur,
-          facture: facture,
-          idArdoise: choix is Ardoise ? choix.id : null,
-          client: client.text,
-          telephone: tel.text,
-        );
-        return true;
-      },
-      succes: 'Facture mise en ardoise',
-    );
+    final ok = await essayer(context, () async {
+      await caisse.mettreEnArdoise(
+        caissier: acteur,
+        facture: facture,
+        idArdoise: choix is Ardoise ? choix.id : null,
+        client: client.text,
+        telephone: tel.text,
+      );
+      return true;
+    });
     if (ok != true || !context.mounted) return;
+    tamponner(context, 'CRÉDIT', couleur: couleurAddition);
     final f = Facture.fromDoc(await ref.read(dbProvider).factures.doc(facture.id).get());
     if (context.mounted) await imprimer(context, ticketFacture(resto, f));
   }
 
   Future<void> _avoir(BuildContext context, WidgetRef ref) async {
-    final montant = await demanderNombre(context, 'Avoir sur ${facture.numero}',
-        label: 'Montant à rembourser (F)', initial: facture.total);
+    final montant = await demanderNombre(
+      context,
+      'Avoir sur ${facture.numero}',
+      label: 'Montant à rembourser (F)',
+      initial: facture.total,
+    );
     if (montant == null || !context.mounted) return;
     final motif = await demanderTexte(context, 'Motif de l’avoir', label: 'Motif');
     if (motif == null || !context.mounted) return;
     final caisse = ref.read(caisseServiceProvider);
-    await essayer(context,
-        () => caisse.creerAvoir(ref.read(acteurProvider)!, facture, montant, motif),
-        succes: 'Avoir créé');
+    await essayer(
+      context,
+      () => caisse.creerAvoir(ref.read(acteurProvider)!, facture, montant, motif),
+      succes: 'Avoir créé',
+    );
   }
 }
 
@@ -644,11 +747,13 @@ class _FacturesDuJour extends ConsumerWidget {
       data: (factures) {
         if (factures.isEmpty) return const Center(child: Text('Aucune facture aujourd’hui'));
         final paye = factures.where((f) => f.statut == StatutFacture.payee).fold(0, (s, f) => s + f.total);
-        return ListView(padding: const EdgeInsets.all(12), children: [
-          Text('${factures.length} facture(s) · ${fcfa(paye)} payés',
-              style: Theme.of(context).textTheme.titleMedium),
-          for (final f in factures) CarteFacture(facture: f, journee: journee),
-        ]);
+        return ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            Text('${factures.length} facture(s) · ${fcfa(paye)} payés', style: Theme.of(context).textTheme.titleMedium),
+            for (final f in factures) CarteFacture(facture: f, journee: journee),
+          ],
+        );
       },
     );
   }
@@ -669,38 +774,57 @@ class _Ardoises extends ConsumerWidget {
         final enCours = liste.where((a) => a.montantDu > 0).toList();
         if (enCours.isEmpty) return const Center(child: Text('Aucune ardoise en cours'));
         final total = enCours.fold(0, (s, a) => s + a.montantDu);
-        return ListView(padding: const EdgeInsets.all(12), children: [
-          Text('Total dû : ${fcfa(total)}', style: Theme.of(context).textTheme.titleMedium),
-          for (final a in enCours)
-            Card(
-              child: ListTile(
-                title: Text(a.client),
-                subtitle: Text('${a.telephone} · depuis ${DateTime.now().difference(a.creeLe).inDays} jour(s)'
-                    ' · ${a.idsFactures.length} facture(s)'),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(fcfa(a.montantDu), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () async {
-                      if (journee == null) {
-                        afficherMessage(context, 'Ouvrez d’abord la caisse', erreur: true);
-                        return;
-                      }
-                      final m = await demanderNombre(context, 'Remboursement de ${a.client}',
-                          label: 'Montant reçu (F)', initial: a.montantDu);
-                      if (m == null || !context.mounted) return;
-                      await essayer(
-                          context,
-                          () => ref.read(caisseServiceProvider).rembourserArdoise(
-                              caissier: ref.read(acteurProvider)!, ardoise: a, montant: m, journee: journee),
-                          succes: 'Remboursement enregistré');
-                    },
-                    child: const Text('Rembourser'),
+        return ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            Text('Total dû : ${fcfa(total)}', style: Theme.of(context).textTheme.titleMedium),
+            for (final a in enCours)
+              Card(
+                child: ListTile(
+                  title: Text(a.client),
+                  subtitle: Text(
+                    '${a.telephone} · depuis ${DateTime.now().difference(a.creeLe).inDays} jour(s)'
+                    ' · ${a.idsFactures.length} facture(s)',
                   ),
-                ]),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(fcfa(a.montantDu), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () async {
+                          if (journee == null) {
+                            afficherMessage(context, 'Ouvrez d’abord la caisse', erreur: true);
+                            return;
+                          }
+                          final m = await demanderNombre(
+                            context,
+                            'Remboursement de ${a.client}',
+                            label: 'Montant reçu (F)',
+                            initial: a.montantDu,
+                          );
+                          if (m == null || !context.mounted) return;
+                          await essayer(
+                            context,
+                            () => ref
+                                .read(caisseServiceProvider)
+                                .rembourserArdoise(
+                                  caissier: ref.read(acteurProvider)!,
+                                  ardoise: a,
+                                  montant: m,
+                                  journee: journee,
+                                ),
+                            succes: 'Remboursement enregistré',
+                          );
+                        },
+                        child: const Text('Rembourser'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-        ]);
+          ],
+        );
       },
     );
   }
@@ -715,55 +839,71 @@ class _Journee extends ConsumerWidget {
     final j = ref.watch(journeeOuverteProvider).value;
     final historique = ref.watch(journeesProvider).value ?? const [];
     final enCours = ref.watch(sessionsEnCoursProvider).value ?? const [];
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      if (j == null)
-        FilledButton.icon(
-          icon: const Icon(Icons.lock_open),
-          label: const Text('Ouvrir la caisse'),
-          onPressed: () => ouvrirCaisse(context, ref),
-        )
-      else
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Journée en cours', style: Theme.of(context).textTheme.titleLarge),
-              Text('Ouverte le ${dateHeure(j.ouverture)} par ${j.caissier}'),
-              const SizedBox(height: 8),
-              Text('Fond de caisse : ${fcfa(j.fond)}'),
-              Text('Encaissements : ${fcfa(j.totalEncaisse)}'),
-              Text('Total théorique : ${fcfa(j.fond + j.totalEncaisse)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                icon: const Icon(Icons.lock),
-                label: const Text('Clôturer la caisse'),
-                onPressed: () => _cloturer(context, ref, j, enCours.length),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (j == null)
+          FilledButton.icon(
+            icon: const Icon(Icons.lock_open),
+            label: const Text('Ouvrir la caisse'),
+            onPressed: () => ouvrirCaisse(context, ref),
+          )
+        else
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Journée en cours', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Ouverte le ${dateHeure(j.ouverture)} par ${j.caissier}'),
+                  const SizedBox(height: 8),
+                  Text('Fond de caisse : ${fcfa(j.fond)}'),
+                  Text('Encaissements : ${fcfa(j.totalEncaisse)}'),
+                  Text(
+                    'Total théorique : ${fcfa(j.fond + j.totalEncaisse)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.lock),
+                    label: const Text('Clôturer la caisse'),
+                    onPressed: () => _cloturer(context, ref, j, enCours.length),
+                  ),
+                ],
               ),
-            ]),
+            ),
           ),
-        ),
-      const SizedBox(height: 24),
-      Text('Historique des clôtures', style: Theme.of(context).textTheme.titleMedium),
-      for (final h in historique.where((h) => h.verrouillee))
-        ListTile(
-          title: Text('${dateHeure(h.ouverture)} → ${h.cloture == null ? '' : dateHeure(h.cloture!)}'),
-          subtitle: Text('Théorique ${fcfa(h.totalTheorique)} · compté ${fcfa(h.totalCompte ?? 0)} · ${h.caissier}'),
-          trailing: Text('Écart ${fcfa(h.ecart ?? 0)}',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: (h.ecart ?? 0) == 0 ? couleurLibre : Colors.red)),
-        ),
-    ]);
+        const SizedBox(height: 24),
+        Text('Historique des clôtures', style: Theme.of(context).textTheme.titleMedium),
+        for (final h in historique.where((h) => h.verrouillee))
+          ListTile(
+            title: Text('${dateHeure(h.ouverture)} → ${h.cloture == null ? '' : dateHeure(h.cloture!)}'),
+            subtitle: Text('Théorique ${fcfa(h.totalTheorique)} · compté ${fcfa(h.totalCompte ?? 0)} · ${h.caissier}'),
+            trailing: Text(
+              'Écart ${fcfa(h.ecart ?? 0)}',
+              style: TextStyle(fontWeight: FontWeight.bold, color: (h.ecart ?? 0) == 0 ? couleurLibre : Colors.red),
+            ),
+          ),
+      ],
+    );
   }
 
   Future<void> _cloturer(BuildContext context, WidgetRef ref, JourneeCaisse j, int tablesOuvertes) async {
     if (tablesOuvertes > 0) {
-      final ok = await confirmer(context, 'Tables encore ouvertes',
-          '$tablesOuvertes addition(s) ne sont pas réglées. Clôturer quand même ?');
+      final ok = await confirmer(
+        context,
+        'Tables encore ouvertes',
+        '$tablesOuvertes addition(s) ne sont pas réglées. Clôturer quand même ?',
+      );
       if (!ok || !context.mounted) return;
     }
-    final compte = await demanderNombre(context, 'Clôture de caisse',
-        label: 'Argent compté (F)', aide: 'Comptez l’argent présent dans la caisse.');
+    final compte = await demanderNombre(
+      context,
+      'Clôture de caisse',
+      label: 'Argent compté (F)',
+      aide: 'Comptez l’argent présent dans la caisse.',
+    );
     if (compte == null || !context.mounted) return;
     final resto = ref.read(restaurantProvider).value;
     final db = ref.read(dbProvider);
@@ -776,12 +916,12 @@ class _Journee extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Caisse clôturée'),
-        content: Text('Théorique : ${fcfa(cloturee.totalTheorique)}\n'
-            'Compté : ${fcfa(compte)}\n'
-            'Écart : ${fcfa(cloturee.ecart ?? 0)}'),
-        actions: [
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-        ],
+        content: Text(
+          'Théorique : ${fcfa(cloturee.totalTheorique)}\n'
+          'Compté : ${fcfa(compte)}\n'
+          'Écart : ${fcfa(cloturee.ecart ?? 0)}',
+        ),
+        actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
       ),
     );
     if (resto != null && context.mounted) {

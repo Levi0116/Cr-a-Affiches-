@@ -32,11 +32,9 @@ class RestoDb {
 
   RestoDb({required this.fs, required this.idRestaurant, required this.appareil});
 
-  DocumentReference<Map<String, dynamic>> get resto =>
-      fs.collection('restaurants').doc(idRestaurant);
+  DocumentReference<Map<String, dynamic>> get resto => fs.collection('restaurants').doc(idRestaurant);
 
-  CollectionReference<Map<String, dynamic>> col(String nom) =>
-      resto.collection(nom);
+  CollectionReference<Map<String, dynamic>> col(String nom) => resto.collection(nom);
 
   CollectionReference<Map<String, dynamic>> get employes => col('employes');
   CollectionReference<Map<String, dynamic>> get zones => col('zones');
@@ -44,45 +42,33 @@ class RestoDb {
   CollectionReference<Map<String, dynamic>> get categories => col('categories');
   CollectionReference<Map<String, dynamic>> get articles => col('articles');
   CollectionReference<Map<String, dynamic>> get sessions => col('sessions');
-  CollectionReference<Map<String, dynamic>> lignes(String idSession) =>
-      sessions.doc(idSession).collection('lignes');
+  CollectionReference<Map<String, dynamic>> lignes(String idSession) => sessions.doc(idSession).collection('lignes');
   CollectionReference<Map<String, dynamic>> get factures => col('factures');
-  CollectionReference<Map<String, dynamic>> get encaissements =>
-      col('encaissements');
+  CollectionReference<Map<String, dynamic>> get encaissements => col('encaissements');
   CollectionReference<Map<String, dynamic>> get avoirs => col('avoirs');
-  CollectionReference<Map<String, dynamic>> get mouvementsStock =>
-      col('mouvementsStock');
-  CollectionReference<Map<String, dynamic>> get fournisseurs =>
-      col('fournisseurs');
+  CollectionReference<Map<String, dynamic>> get mouvementsStock => col('mouvementsStock');
+  CollectionReference<Map<String, dynamic>> get fournisseurs => col('fournisseurs');
   CollectionReference<Map<String, dynamic>> get livraisons => col('livraisons');
-  CollectionReference<Map<String, dynamic>> get journeesCaisse =>
-      col('journeesCaisse');
+  CollectionReference<Map<String, dynamic>> get journeesCaisse => col('journeesCaisse');
   CollectionReference<Map<String, dynamic>> get ardoises => col('ardoises');
   CollectionReference<Map<String, dynamic>> get depenses => col('depenses');
-  CollectionReference<Map<String, dynamic>> get demandesValidation =>
-      col('demandesValidation');
-  CollectionReference<Map<String, dynamic>> get journalAudit =>
-      col('journalAudit');
-  CollectionReference<Map<String, dynamic>> get historiquePrix =>
-      col('historiquePrix');
-  DocumentReference<Map<String, dynamic>> get compteurs =>
-      col('compteurs').doc('principal');
+  CollectionReference<Map<String, dynamic>> get demandesValidation => col('demandesValidation');
+  CollectionReference<Map<String, dynamic>> get journalAudit => col('journalAudit');
+  CollectionReference<Map<String, dynamic>> get historiquePrix => col('historiquePrix');
+  DocumentReference<Map<String, dynamic>> get compteurs => col('compteurs').doc('principal');
 
   /// Identifiant unique créé sur l'appareil (évite les doublons, section 6.4).
   String nouvelId() => _uuid.v4();
 
   /// Champs présents dans chaque document : heure serveur + heure appareil.
   Map<String, dynamic> meta(Acteur a) => {
-        'creeLe': FieldValue.serverTimestamp(),
-        'heureAppareil': Timestamp.now(),
-        'creePar': a.id,
-        'appareil': appareil,
-      };
+    'creeLe': FieldValue.serverTimestamp(),
+    'heureAppareil': Timestamp.now(),
+    'creePar': a.id,
+    'appareil': appareil,
+  };
 
-  Map<String, dynamic> modif(Acteur a) => {
-        'modifieLe': FieldValue.serverTimestamp(),
-        'modifiePar': a.id,
-      };
+  Map<String, dynamic> modif(Acteur a) => {'modifieLe': FieldValue.serverTimestamp(), 'modifiePar': a.id};
 
   /// Ajoute une entrée au journal d'audit dans le même lot d'écriture.
   void audit(WriteBatch b, Acteur a, String action, String detail) {
@@ -101,10 +87,13 @@ class RestoDb {
   /// l'interface ne doit donc pas l'attendre pour continuer.
   Future<void> envoyer(WriteBatch b) {
     enAttente.value++;
-    return b.commit().catchError((Object e) {
-      derniereErreur.value = '$e';
-      throw e;
-    }).whenComplete(() => enAttente.value--);
+    return b
+        .commit()
+        .catchError((Object e) {
+          derniereErreur.value = '$e';
+          throw e;
+        })
+        .whenComplete(() => enAttente.value--);
   }
 
   /// Pour les actions faisables hors ligne : on n'attend pas l'accusé du
@@ -113,8 +102,7 @@ class RestoDb {
   Future<void> envoyerSansBloquer(WriteBatch b) async {
     final f = envoyer(b);
     f.ignore();
-    await Future.any(
-        [f, Future<void>.delayed(const Duration(milliseconds: 300))]);
+    await Future.any([f, Future<void>.delayed(const Duration(milliseconds: 300))]);
   }
 }
 

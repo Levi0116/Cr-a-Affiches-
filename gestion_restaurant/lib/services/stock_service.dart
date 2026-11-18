@@ -11,8 +11,7 @@ class StockService {
   final RestoDb db;
   StockService(this.db);
 
-  void _mouvement(WriteBatch b, Acteur a, Article art, String type, num qte,
-      String motif) {
+  void _mouvement(WriteBatch b, Acteur a, Article art, String type, num qte, String motif) {
     b.set(db.mouvementsStock.doc(db.nouvelId()), {
       ...db.meta(a),
       'idArticle': art.id,
@@ -35,16 +34,14 @@ class StockService {
     required int prixAchatUnitaire,
     String fournisseur = '',
   }) async {
-    final qte = casiersEnUnites(
-        casiers: casiers,
-        unitesParCasier: article.unitesParCasier,
-        unitesIsolees: unites);
+    final qte = casiersEnUnites(casiers: casiers, unitesParCasier: article.unitesParCasier, unitesIsolees: unites);
     if (qte <= 0) throw ErreurMetier('Quantité nulle');
     final cout = nouveauCoutMoyen(
-        stockActuel: article.stock,
-        coutMoyenActuel: article.coutMoyen,
-        quantiteEntree: qte,
-        prixAchatUnitaire: prixAchatUnitaire);
+      stockActuel: article.stock,
+      coutMoyenActuel: article.coutMoyen,
+      quantiteEntree: qte,
+      prixAchatUnitaire: prixAchatUnitaire,
+    );
     final b = db.fs.batch();
     final idLivraison = db.nouvelId();
     b.set(db.livraisons.doc(idLivraison), {
@@ -58,15 +55,13 @@ class StockService {
       'prixAchatUnitaire': prixAchatUnitaire,
       'montant': qte * prixAchatUnitaire,
     });
-    _mouvement(b, a, article, 'entree', qte,
-        'Livraison${fournisseur.isEmpty ? '' : ' $fournisseur'}');
+    _mouvement(b, a, article, 'entree', qte, 'Livraison${fournisseur.isEmpty ? '' : ' $fournisseur'}');
     b.update(db.articles.doc(article.id), {'coutMoyen': cout});
     await db.envoyerSansBloquer(b);
   }
 
   /// Perte : casse, produit périmé, article offert… toujours avec un motif.
-  Future<void> saisirPerte(
-      Acteur a, Article article, num quantite, String motif) async {
+  Future<void> saisirPerte(Acteur a, Article article, num quantite, String motif) async {
     if (quantite <= 0) throw ErreurMetier('Quantité invalide');
     if (motif.trim().isEmpty) throw ErreurMetier('Le motif est obligatoire');
     final b = db.fs.batch();
@@ -78,20 +73,14 @@ class StockService {
   /// Portions du jour pour un plat géré en « portions disponibles ».
   Future<void> definirPortions(Acteur a, Article article, int portions) async {
     final b = db.fs.batch();
-    _mouvement(b, a, article, 'ajustement', portions - article.stock,
-        'Portions du jour : $portions');
+    _mouvement(b, a, article, 'ajustement', portions - article.stock, 'Portions du jour : $portions');
     await db.envoyerSansBloquer(b);
   }
 
-  Future<void> forcerDisponibilite(
-      Acteur a, Article article, bool disponible) async {
+  Future<void> forcerDisponibilite(Acteur a, Article article, bool disponible) async {
     final b = db.fs.batch();
-    b.update(db.articles.doc(article.id), {
-      'disponible': disponible,
-      ...db.modif(a),
-    });
-    db.audit(b, a, disponible ? 'remise_en_vente' : 'forcer_indisponible',
-        article.nom);
+    b.update(db.articles.doc(article.id), {'disponible': disponible, ...db.modif(a)});
+    db.audit(b, a, disponible ? 'remise_en_vente' : 'forcer_indisponible', article.nom);
     await db.envoyerSansBloquer(b);
   }
 
@@ -103,8 +92,7 @@ class StockService {
 
   /// Inventaire : le gestionnaire saisit le compté, l'écart avec le stock
   /// théorique part en validation chez l'administrateur.
-  Future<void> soumettreInventaire(
-      Acteur a, Article article, num quantiteComptee) async {
+  Future<void> soumettreInventaire(Acteur a, Article article, num quantiteComptee) async {
     if (quantiteComptee < 0) throw ErreurMetier('Quantité invalide');
     final ecart = quantiteComptee - article.stock;
     if (ecart == 0) return;

@@ -3,11 +3,8 @@ import '../models/modeles.dart';
 
 /// Ticket thermique 80 mm (section 4.5) : mis en page en HTML avec
 /// `@page { size: 80mm auto; }`, environ 48 caractères par ligne.
-String _e(String s) => s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
+String _e(String s) =>
+    s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
 const _style = '''
 @page { size: 80mm auto; margin: 0; }
@@ -25,7 +22,8 @@ td { vertical-align: top; padding: 1px 0; } td.r { text-align: right; white-spac
 .dup { font-size: 16px; font-weight: bold; border: 2px solid #000; padding: 2px; margin: 4px 0; }
 ''';
 
-String _entete(Restaurant r) => '''
+String _entete(Restaurant r) =>
+    '''
 <div class="c">
 ${r.logoUrl.isNotEmpty ? '<img class="logo" src="${_e(r.logoUrl)}"><br>' : ''}
 <div class="nom">${_e(r.nom)}</div>
@@ -39,9 +37,11 @@ String _lignes(List<LigneCommande> lignes) {
   for (final l in lignes) {
     final cls = l.annulee ? ' class="barre"' : '';
     final suffixe = l.annulee ? ' (annulé)' : (l.offert ? ' (offert)' : '');
-    sb.write('<tr$cls><td>${l.quantite} × ${_e(l.nom)}$suffixe'
-        '<br><small>${fcfa(l.prixUnitaire)}</small></td>'
-        '<td class="r">${fcfa(l.montant)}</td></tr>');
+    sb.write(
+      '<tr$cls><td>${l.quantite} × ${_e(l.nom)}$suffixe'
+      '<br><small>${fcfa(l.prixUnitaire)}</small></td>'
+      '<td class="r">${fcfa(l.montant)}</td></tr>',
+    );
   }
   sb.write('</table>');
   return sb.toString();
@@ -54,8 +54,10 @@ String _page(String corps) =>
 String ticketFacture(Restaurant r, Facture f, {bool duplicata = false}) {
   final sb = StringBuffer(_entete(r));
   if (duplicata) sb.write('<div class="c dup">DUPLICATA</div>');
-  sb.write('<div class="b">Facture ${_e(f.numero)}'
-      '${f.partie != null ? ' (part ${f.partie})' : ''}</div>');
+  sb.write(
+    '<div class="b">Facture ${_e(f.numero)}'
+    '${f.partie != null ? ' (part ${f.partie})' : ''}</div>',
+  );
   sb.write('<div>${dateHeure(f.date)}</div>');
   sb.write('<div>Table : ${_e(f.numeroTable)}</div>');
   sb.write('<div>Serveuse : ${_e(f.nomServeuse)} · Caisse : ${_e(f.nomCaissier)}</div><hr>');
@@ -63,8 +65,10 @@ String ticketFacture(Restaurant r, Facture f, {bool duplicata = false}) {
   sb.write('<hr><table>');
   sb.write('<tr><td>Sous-total</td><td class="r">${fcfa(f.sousTotal)}</td></tr>');
   if (f.remise > 0) {
-    sb.write('<tr><td>Remise${f.motifRemise != null ? ' (${_e(f.motifRemise!)})' : ''}</td>'
-        '<td class="r">-${fcfa(f.remise)}</td></tr>');
+    sb.write(
+      '<tr><td>Remise${f.motifRemise != null ? ' (${_e(f.motifRemise!)})' : ''}</td>'
+      '<td class="r">-${fcfa(f.remise)}</td></tr>',
+    );
   }
   if (f.partie != null) {
     sb.write('<tr><td>Total table</td><td class="r">${fcfa(f.sousTotal - f.remise)}</td></tr>');
@@ -72,8 +76,10 @@ String ticketFacture(Restaurant r, Facture f, {bool duplicata = false}) {
   if (f.tva > 0) {
     sb.write('<tr><td>dont TVA</td><td class="r">${fcfa(f.tva)}</td></tr>');
   }
-  sb.write('<tr class="total"><td>TOTAL${f.partie != null ? ' PART' : ''}</td>'
-      '<td class="r">${fcfa(f.total)}</td></tr>');
+  sb.write(
+    '<tr class="total"><td>TOTAL${f.partie != null ? ' PART' : ''}</td>'
+    '<td class="r">${fcfa(f.total)}</td></tr>',
+  );
   if (f.statut == StatutFacture.payee) {
     sb.write('<tr><td>Montant reçu</td><td class="r">${fcfa(f.montantRecu)}</td></tr>');
     sb.write('<tr><td>Monnaie rendue</td><td class="r">${fcfa(f.monnaieRendue)}</td></tr>');
@@ -85,8 +91,7 @@ String ticketFacture(Restaurant r, Facture f, {bool duplicata = false}) {
 }
 
 /// Pré-addition : « à titre indicatif », sans numéro de facture.
-String ticketPreAddition(
-    Restaurant r, SessionTable s, List<LigneCommande> lignes, int total) {
+String ticketPreAddition(Restaurant r, SessionTable s, List<LigneCommande> lignes, int total) {
   final sb = StringBuffer(_entete(r));
   sb.write('<div class="c b">PRÉ-ADDITION<br>à titre indicatif</div>');
   sb.write('<div>${dateHeure(DateTime.now())}</div>');

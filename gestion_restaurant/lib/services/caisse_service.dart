@@ -12,10 +12,7 @@ class CaisseService {
   // ---------------------------------------------------------------- Journée
 
   Future<JourneeCaisse?> journeeOuverte() async {
-    final q = await db.journeesCaisse
-        .where('verrouillee', isEqualTo: false)
-        .limit(1)
-        .get();
+    final q = await db.journeesCaisse.where('verrouillee', isEqualTo: false).limit(1).get();
     return q.docs.isEmpty ? null : JourneeCaisse.fromDoc(q.docs.first);
   }
 
@@ -43,8 +40,7 @@ class CaisseService {
 
   /// Clôture : total théorique = fond + encaissements ; l'écart s'affiche et
   /// la journée est verrouillée.
-  Future<JourneeCaisse> cloturerCaisse(
-      Acteur caissier, JourneeCaisse j, int totalCompte) async {
+  Future<JourneeCaisse> cloturerCaisse(Acteur caissier, JourneeCaisse j, int totalCompte) async {
     if (j.verrouillee) throw ErreurMetier('Journée déjà clôturée');
     final frais = JourneeCaisse.fromDoc(await db.journeesCaisse.doc(j.id).get());
     final theorique = frais.fond + frais.totalEncaisse;
@@ -58,8 +54,7 @@ class CaisseService {
       'cloture': Timestamp.now(),
       'cloturePar': caissier.nom,
     });
-    db.audit(b, caissier, 'cloture_caisse',
-        'Théorique $theorique F, compté $totalCompte F, écart $ecart F');
+    db.audit(b, caissier, 'cloture_caisse', 'Théorique $theorique F, compté $totalCompte F, écart $ecart F');
     await db.envoyerSansBloquer(b);
     return JourneeCaisse.fromDoc(await db.journeesCaisse.doc(j.id).get());
   }
@@ -68,8 +63,7 @@ class CaisseService {
 
   Future<List<LigneCommande>> lignesSession(String idSession) async {
     final q = await db.lignes(idSession).get();
-    final l = q.docs.map(LigneCommande.fromDoc).toList()
-      ..sort((a, b) => a.heure.compareTo(b.heure));
+    final l = q.docs.map(LigneCommande.fromDoc).toList()..sort((a, b) => a.heure.compareTo(b.heure));
     return l;
   }
 
@@ -82,11 +76,9 @@ class CaisseService {
     final snap = await db.compteurs.get();
     final m = snap.data() ?? {};
     final anneeCompteur = (m['annee_$serie'] as num?)?.toInt();
-    final dernier =
-        anneeCompteur == annee ? (m[serie] as num?)?.toInt() ?? 0 : 0;
+    final dernier = anneeCompteur == annee ? (m[serie] as num?)?.toInt() ?? 0 : 0;
     final n = dernier + 1;
-    b.set(db.compteurs, {serie: n, 'annee_$serie': annee},
-        SetOptions(merge: true));
+    b.set(db.compteurs, {serie: n, 'annee_$serie': annee}, SetOptions(merge: true));
     return n;
   }
 
@@ -103,19 +95,15 @@ class CaisseService {
   }) async {
     if (!session.enCours) throw ErreurMetier('Cette addition est close');
     final toutes = await lignesSession(session.id);
-    final restantes =
-        toutes.where((l) => !l.annulee && l.idFacture == null).toList();
-    final choisies = idsLignes == null
-        ? restantes
-        : restantes.where((l) => idsLignes.contains(l.id)).toList();
+    final restantes = toutes.where((l) => !l.annulee && l.idFacture == null).toList();
+    final choisies = idsLignes == null ? restantes : restantes.where((l) => idsLignes.contains(l.id)).toList();
     if (choisies.isEmpty) throw ErreurMetier('Aucun article à facturer');
     final partielle = choisies.length < restantes.length;
     if (partielle && nombreParts > 1) {
       throw ErreurMetier('Choisissez soit le partage par article, soit en parts');
     }
     final remise = partielle ? null : session.remise;
-    final tot = calculerTotaux(choisies.map((l) => l.calcul),
-        remise: remise, tauxTva: restaurant.tauxTvaEffectif);
+    final tot = calculerTotaux(choisies.map((l) => l.calcul), remise: remise, tauxTva: restaurant.tauxTvaEffectif);
     final parts = partsEgales(tot.total, nombreParts);
 
     final b = db.fs.batch();
@@ -135,7 +123,7 @@ class CaisseService {
         'idServeuse': session.idServeuse,
         'nomCaissier': caissier.nom,
         'lignes': [
-          for (final l in choisies) {'id': l.id, ...l.toMap()}
+          for (final l in choisies) {'id': l.id, ...l.toMap()},
         ],
         'sousTotal': tot.sousTotal,
         'remise': tot.remise,
@@ -150,8 +138,7 @@ class CaisseService {
       });
     }
     if (parts.length > 1) {
-      b.set(db.compteurs, {'facture': premier + parts.length - 1},
-          SetOptions(merge: true));
+      b.set(db.compteurs, {'facture': premier + parts.length - 1}, SetOptions(merge: true));
     }
     for (final l in choisies) {
       b.update(db.lignes(session.id).doc(l.id), {'idFacture': ids.first});
@@ -161,8 +148,7 @@ class CaisseService {
       if (!partielle) 'statut': StatutSession.facturee.name,
     });
     if (session.idTable != null) {
-      b.update(db.tables.doc(session.idTable),
-          {'statut': StatutTable.addition.name});
+      b.update(db.tables.doc(session.idTable), {'statut': StatutTable.addition.name});
     }
     await db.envoyerSansBloquer(b);
     return ids;
@@ -199,10 +185,8 @@ class CaisseService {
       'caissier': caissier.nom,
       'idJournee': journee.id,
     });
-    b.update(db.journeesCaisse.doc(journee.id),
-        {'totalEncaisse': FieldValue.increment(facture.total)});
-    await _libererSiSoldee(
-        b, facture.idSession, facture.id, StatutFacture.payee);
+    b.update(db.journeesCaisse.doc(journee.id), {'totalEncaisse': FieldValue.increment(facture.total)});
+    await _libererSiSoldee(b, facture.idSession, facture.id, StatutFacture.payee);
     await db.envoyerSansBloquer(b);
     return monnaie;
   }
@@ -237,12 +221,9 @@ class CaisseService {
         'idsFactures': FieldValue.arrayUnion([facture.id]),
       });
     }
-    b.update(db.factures.doc(facture.id),
-        {'statut': StatutFacture.credit.name, 'idArdoise': id});
-    db.audit(b, caissier, 'ardoise',
-        '${facture.numero} (${facture.total} F) à crédit');
-    await _libererSiSoldee(
-        b, facture.idSession, facture.id, StatutFacture.credit);
+    b.update(db.factures.doc(facture.id), {'statut': StatutFacture.credit.name, 'idArdoise': id});
+    db.audit(b, caissier, 'ardoise', '${facture.numero} (${facture.total} F) à crédit');
+    await _libererSiSoldee(b, facture.idSession, facture.id, StatutFacture.credit);
     await db.envoyerSansBloquer(b);
   }
 
@@ -258,8 +239,7 @@ class CaisseService {
     }
     if (journee.verrouillee) throw ErreurMetier('La caisse est clôturée');
     final b = db.fs.batch();
-    b.update(db.ardoises.doc(ardoise.id),
-        {'montantDu': FieldValue.increment(-montant)});
+    b.update(db.ardoises.doc(ardoise.id), {'montantDu': FieldValue.increment(-montant)});
     b.set(db.ardoises.doc(ardoise.id).collection('remboursements').doc(db.nouvelId()), {
       ...db.meta(caissier),
       'montant': montant,
@@ -275,32 +255,34 @@ class CaisseService {
       'caissier': caissier.nom,
       'idJournee': journee.id,
     });
-    b.update(db.journeesCaisse.doc(journee.id),
-        {'totalEncaisse': FieldValue.increment(montant)});
+    b.update(db.journeesCaisse.doc(journee.id), {'totalEncaisse': FieldValue.increment(montant)});
     await db.envoyerSansBloquer(b);
   }
 
   /// Si toutes les lignes sont facturées et toutes les factures réglées,
   /// l'addition est close et la table redevient libre.
-  Future<void> _libererSiSoldee(WriteBatch b, String idSession,
-      String idFactureReglee, StatutFacture nouveauStatut) async {
+  Future<void> _libererSiSoldee(
+    WriteBatch b,
+    String idSession,
+    String idFactureReglee,
+    StatutFacture nouveauStatut,
+  ) async {
     final s = SessionTable.fromDoc(await db.sessions.doc(idSession).get());
     if (s.statut != StatutSession.facturee) return;
     final fact = await db.factures.where('idSession', isEqualTo: idSession).get();
-    final toutesReglees = fact.docs.every((d) =>
-        d.id == idFactureReglee || d.data()['statut'] != StatutFacture.emise.name);
+    final toutesReglees = fact.docs.every(
+      (d) => d.id == idFactureReglee || d.data()['statut'] != StatutFacture.emise.name,
+    );
     if (!toutesReglees) return;
-    final credit = nouveauStatut == StatutFacture.credit ||
-        fact.docs.any((d) =>
-            d.id != idFactureReglee &&
-            d.data()['statut'] == StatutFacture.credit.name);
+    final credit =
+        nouveauStatut == StatutFacture.credit ||
+        fact.docs.any((d) => d.id != idFactureReglee && d.data()['statut'] == StatutFacture.credit.name);
     b.update(db.sessions.doc(idSession), {
       'statut': credit ? StatutSession.credit.name : StatutSession.payee.name,
       'fermeture': Timestamp.now(),
     });
     if (s.idTable != null) {
-      b.update(db.tables.doc(s.idTable),
-          {'statut': StatutTable.libre.name, 'idSession': null});
+      b.update(db.tables.doc(s.idTable), {'statut': StatutTable.libre.name, 'idSession': null});
     }
   }
 
@@ -313,8 +295,13 @@ class CaisseService {
   }
 
   /// Demande de remise (montant ou %) soumise à l'administrateur.
-  Future<void> demanderRemise(Acteur a, SessionTable s,
-      {required TypeRemise type, required int valeur, required String motif}) async {
+  Future<void> demanderRemise(
+    Acteur a,
+    SessionTable s, {
+    required TypeRemise type,
+    required int valeur,
+    required String motif,
+  }) async {
     if (motif.trim().isEmpty) throw ErreurMetier('Le motif est obligatoire');
     if (valeur <= 0 || (type == TypeRemise.pourcentage && valeur > 100)) {
       throw ErreurMetier('Valeur de remise invalide');
@@ -326,19 +313,13 @@ class CaisseService {
       'demandeur': a.nom,
       'motif': motif.trim(),
       'statut': StatutValidation.enAttente.name,
-      'detail': {
-        'idSession': s.id,
-        'numeroTable': s.numeroTable,
-        'typeRemise': type.name,
-        'valeur': valeur,
-      },
+      'detail': {'idSession': s.id, 'numeroTable': s.numeroTable, 'typeRemise': type.name, 'valeur': valeur},
     });
     await db.envoyerSansBloquer(b);
   }
 
   /// Demande qu'une ligne soit offerte, soumise à l'administrateur.
-  Future<void> demanderOffert(
-      Acteur a, SessionTable s, LigneCommande l, String motif) async {
+  Future<void> demanderOffert(Acteur a, SessionTable s, LigneCommande l, String motif) async {
     if (motif.trim().isEmpty) throw ErreurMetier('Le motif est obligatoire');
     final b = db.fs.batch();
     b.set(db.demandesValidation.doc(db.nouvelId()), {
@@ -361,8 +342,7 @@ class CaisseService {
 
   /// Avoir : une facture payée n'est jamais modifiée, on émet une facture
   /// négative liée à l'originale (administrateur uniquement).
-  Future<String> creerAvoir(
-      Acteur admin, Facture origine, int montant, String motif) async {
+  Future<String> creerAvoir(Acteur admin, Facture origine, int montant, String motif) async {
     if (!admin.estAdmin) throw ErreurMetier('Réservé à l’administrateur');
     if (montant <= 0 || montant > origine.total) {
       throw ErreurMetier('Montant invalide');

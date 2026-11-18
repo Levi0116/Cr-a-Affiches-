@@ -10,8 +10,8 @@ import '../core/calculs.dart';
 DateTime _date(Object? v) => v is Timestamp
     ? v.toDate()
     : v is DateTime
-        ? v
-        : DateTime.fromMillisecondsSinceEpoch(0);
+    ? v
+    : DateTime.fromMillisecondsSinceEpoch(0);
 int _int(Object? v) => (v as num?)?.toInt() ?? 0;
 double _dbl(Object? v) => (v as num?)?.toDouble() ?? 0;
 
@@ -63,24 +63,22 @@ class Restaurant {
       messageBasTicket: m['messageBasTicket'] as String? ?? 'Merci et à bientôt',
       soumisTva: m['soumisTva'] as bool? ?? false,
       tauxTva: m['tauxTva'] == null ? 18 : _dbl(m['tauxTva']),
-      deconnexionMinutes: m['deconnexionMinutes'] == null
-          ? 5
-          : _int(m['deconnexionMinutes']),
+      deconnexionMinutes: m['deconnexionMinutes'] == null ? 5 : _int(m['deconnexionMinutes']),
       logoUrl: m['logoUrl'] as String? ?? '',
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'nom': nom,
-        'adresse': adresse,
-        'telephone': telephone,
-        'mentionsFacture': mentionsFacture,
-        'messageBasTicket': messageBasTicket,
-        'soumisTva': soumisTva,
-        'tauxTva': tauxTva,
-        'deconnexionMinutes': deconnexionMinutes,
-        'logoUrl': logoUrl,
-      };
+    'nom': nom,
+    'adresse': adresse,
+    'telephone': telephone,
+    'mentionsFacture': mentionsFacture,
+    'messageBasTicket': messageBasTicket,
+    'soumisTva': soumisTva,
+    'tauxTva': tauxTva,
+    'deconnexionMinutes': deconnexionMinutes,
+    'logoUrl': logoUrl,
+  };
 }
 
 class Employe {
@@ -89,13 +87,7 @@ class Employe {
   final Role role;
   final String pinHash;
   final bool actif;
-  const Employe({
-    required this.id,
-    required this.nom,
-    required this.role,
-    required this.pinHash,
-    this.actif = true,
-  });
+  const Employe({required this.id, required this.nom, required this.role, required this.pinHash, this.actif = true});
 
   factory Employe.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data()!;
@@ -177,10 +169,13 @@ class Article {
   final String unite;
   final num stock;
   final num seuilAlerte;
+
   /// false = forcé indisponible à la main par le gestionnaire.
   final bool disponible;
+
   /// false = article retiré du menu par l'administrateur.
   final bool actif;
+
   /// true = le stock est suivi (déduction, rupture automatique à 0).
   final bool suiviStock;
   final int coutMoyen;
@@ -235,19 +230,19 @@ class Article {
   }
 
   Map<String, dynamic> toMap() => {
-        'nom': nom,
-        'idCategorie': idCategorie,
-        'prixVente': prixVente,
-        'type': type.name,
-        'unite': unite,
-        'seuilAlerte': seuilAlerte,
-        'disponible': disponible,
-        'actif': actif,
-        'suiviStock': suiviStock,
-        'unitesParCasier': unitesParCasier,
-        'ordre': ordre,
-        'photoUrl': photoUrl,
-      };
+    'nom': nom,
+    'idCategorie': idCategorie,
+    'prixVente': prixVente,
+    'type': type.name,
+    'unite': unite,
+    'seuilAlerte': seuilAlerte,
+    'disponible': disponible,
+    'actif': actif,
+    'suiviStock': suiviStock,
+    'unitesParCasier': unitesParCasier,
+    'ordre': ordre,
+    'photoUrl': photoUrl,
+  };
 }
 
 /// ouverte → addition (demandée) → facturee → payee | credit.
@@ -285,9 +280,7 @@ class SessionTable {
   });
 
   bool get enCours =>
-      statut == StatutSession.ouverte ||
-      statut == StatutSession.addition ||
-      statut == StatutSession.facturee;
+      statut == StatutSession.ouverte || statut == StatutSession.addition || statut == StatutSession.facturee;
 
   factory SessionTable.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data()!;
@@ -325,6 +318,7 @@ class LigneCommande {
   final bool offert;
   final String? motifAnnulation;
   final String? validePar;
+
   /// Ligne déjà affectée à une facture partielle (partage par article).
   final String? idFacture;
   const LigneCommande({
@@ -346,44 +340,41 @@ class LigneCommande {
 
   bool get annulee => statut == StatutLigne.annulee;
   int get montant => annulee || offert ? 0 : quantite * prixUnitaire;
-  LigneCalcul get calcul =>
-      LigneCalcul(quantite, offert ? 0 : prixUnitaire, annulee: annulee);
+  LigneCalcul get calcul => LigneCalcul(quantite, offert ? 0 : prixUnitaire, annulee: annulee);
 
-  factory LigneCommande.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) =>
-      LigneCommande.fromMap(d.id, d.data()!);
+  factory LigneCommande.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) => LigneCommande.fromMap(d.id, d.data()!);
 
-  factory LigneCommande.fromMap(String id, Map<String, dynamic> m) =>
-      LigneCommande(
-        id: id,
-        idArticle: m['idArticle'] as String? ?? '',
-        nom: m['nom'] as String,
-        quantite: _int(m['quantite']),
-        prixUnitaire: _int(m['prixUnitaire']),
-        note: m['note'] as String? ?? '',
-        tour: _int(m['tour']),
-        statut: StatutLigne.values.byName(m['statut'] as String? ?? 'validee'),
-        auteur: m['auteur'] as String? ?? '',
-        heure: _date(m['heure']),
-        offert: m['offert'] as bool? ?? false,
-        motifAnnulation: m['motifAnnulation'] as String?,
-        validePar: m['validePar'] as String?,
-        idFacture: m['idFacture'] as String?,
-      );
+  factory LigneCommande.fromMap(String id, Map<String, dynamic> m) => LigneCommande(
+    id: id,
+    idArticle: m['idArticle'] as String? ?? '',
+    nom: m['nom'] as String,
+    quantite: _int(m['quantite']),
+    prixUnitaire: _int(m['prixUnitaire']),
+    note: m['note'] as String? ?? '',
+    tour: _int(m['tour']),
+    statut: StatutLigne.values.byName(m['statut'] as String? ?? 'validee'),
+    auteur: m['auteur'] as String? ?? '',
+    heure: _date(m['heure']),
+    offert: m['offert'] as bool? ?? false,
+    motifAnnulation: m['motifAnnulation'] as String?,
+    validePar: m['validePar'] as String?,
+    idFacture: m['idFacture'] as String?,
+  );
 
   Map<String, dynamic> toMap() => {
-        'idArticle': idArticle,
-        'nom': nom,
-        'quantite': quantite,
-        'prixUnitaire': prixUnitaire,
-        'note': note,
-        'tour': tour,
-        'statut': statut.name,
-        'auteur': auteur,
-        'heure': Timestamp.fromDate(heure),
-        'offert': offert,
-        if (motifAnnulation != null) 'motifAnnulation': motifAnnulation,
-        if (validePar != null) 'validePar': validePar,
-      };
+    'idArticle': idArticle,
+    'nom': nom,
+    'quantite': quantite,
+    'prixUnitaire': prixUnitaire,
+    'note': note,
+    'tour': tour,
+    'statut': statut.name,
+    'auteur': auteur,
+    'heure': Timestamp.fromDate(heure),
+    'offert': offert,
+    if (motifAnnulation != null) 'motifAnnulation': motifAnnulation,
+    if (validePar != null) 'validePar': validePar,
+  };
 }
 
 enum StatutFacture { emise, payee, credit }
@@ -434,8 +425,7 @@ class Facture {
     final m = d.data()!;
     final lignes = (m['lignes'] as List? ?? const [])
         .cast<Map>()
-        .map((l) => LigneCommande.fromMap(
-            l['id'] as String? ?? '', Map<String, dynamic>.from(l)))
+        .map((l) => LigneCommande.fromMap(l['id'] as String? ?? '', Map<String, dynamic>.from(l)))
         .toList();
     return Facture(
       id: d.id,

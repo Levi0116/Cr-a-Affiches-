@@ -40,13 +40,7 @@ Future<void> remplirDemo(RestoDb db) async {
   }
   for (var i = 1; i <= 12; i++) {
     final zone = i <= 6 ? 'z-salle' : (i <= 10 ? 'z-terrasse' : 'z-vip');
-    b.set(db.tables.doc('t-$i'), {
-      'numero': '$i',
-      'idZone': zone,
-      'capacite': 4,
-      'statut': 'libre',
-      'active': true,
-    });
+    b.set(db.tables.doc('t-$i'), {'numero': '$i', 'idZone': zone, 'capacite': 4, 'statut': 'libre', 'active': true});
   }
 
   const categories = [

@@ -2,24 +2,26 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../services/db.dart';
+import '../theme/identite.dart';
 
-/// Couleurs d'état des tables (section 3.1).
-const couleurLibre = Color(0xFF2E7D32);
-const couleurOccupee = Color(0xFFEF6C00);
-const couleurAddition = Color(0xFF1565C0);
+/// Couleurs d'état des tables (section 3.1), lues dans l'identité visuelle.
+final Color couleurLibre = identite.tableLibre;
+final Color couleurOccupee = identite.tableOccupee;
+final Color couleurAddition = identite.tableAddition;
 
 void afficherMessage(BuildContext context, String message, {bool erreur = false}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Text(message, style: const TextStyle(fontSize: 16)),
-      backgroundColor: erreur ? Colors.red.shade700 : null,
-    ));
+    ..showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontSize: 16)),
+        backgroundColor: erreur ? identite.erreur : null,
+      ),
+    );
 }
 
 /// Exécute une action et affiche l'erreur métier éventuelle.
-Future<T?> essayer<T>(BuildContext context, Future<T> Function() action,
-    {String? succes}) async {
+Future<T?> essayer<T>(BuildContext context, Future<T> Function() action, {String? succes}) async {
   try {
     final r = await action();
     if (succes != null && context.mounted) afficherMessage(context, succes);
@@ -34,8 +36,13 @@ Future<T?> essayer<T>(BuildContext context, Future<T> Function() action,
   return null;
 }
 
-Future<String?> demanderTexte(BuildContext context, String titre,
-    {String label = '', String initial = '', bool obligatoire = true}) {
+Future<String?> demanderTexte(
+  BuildContext context,
+  String titre, {
+  String label = '',
+  String initial = '',
+  bool obligatoire = true,
+}) {
   final ctrl = TextEditingController(text: initial);
   return showDialog<String>(
     context: context,
@@ -61,31 +68,30 @@ Future<String?> demanderTexte(BuildContext context, String titre,
   );
 }
 
-Future<int?> demanderNombre(BuildContext context, String titre,
-    {String label = '', int? initial, String? aide}) async {
+Future<int?> demanderNombre(BuildContext context, String titre, {String label = '', int? initial, String? aide}) async {
   final ctrl = TextEditingController(text: initial?.toString() ?? '');
   return showDialog<int>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(titre),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (aide != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(aide)),
-        TextField(
-          controller: ctrl,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))],
-          style: const TextStyle(fontSize: 24),
-          decoration: InputDecoration(labelText: label),
-          onSubmitted: (v) => Navigator.pop(ctx, int.tryParse(v)),
-        ),
-      ]),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (aide != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(aide)),
+          TextField(
+            controller: ctrl,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'-?\d*'))],
+            style: const TextStyle(fontSize: 24),
+            decoration: InputDecoration(labelText: label),
+            onSubmitted: (v) => Navigator.pop(ctx, int.tryParse(v)),
+          ),
+        ],
+      ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-        FilledButton(
-          onPressed: () => Navigator.pop(ctx, int.tryParse(ctrl.text)),
-          child: const Text('OK'),
-        ),
+        FilledButton(onPressed: () => Navigator.pop(ctx, int.tryParse(ctrl.text)), child: const Text('OK')),
       ],
     ),
   );
@@ -111,10 +117,10 @@ class Chargement extends StatelessWidget {
   const Chargement({super.key, this.erreur});
   @override
   Widget build(BuildContext context) => Center(
-        child: erreur == null
-            ? const CircularProgressIndicator()
-            : Text('Erreur : $erreur', style: const TextStyle(color: Colors.red)),
-      );
+    child: erreur == null
+        ? const CircularProgressIndicator()
+        : Text('Erreur : $erreur', style: const TextStyle(color: Colors.red)),
+  );
 }
 
 class Pastille extends StatelessWidget {
@@ -123,12 +129,15 @@ class Pastille extends StatelessWidget {
   const Pastille(this.texte, this.couleur, {super.key});
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: couleur.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(texte,
-            style: TextStyle(color: couleur, fontWeight: FontWeight.bold, fontSize: 12)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    decoration: BoxDecoration(
+      color: couleur.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: couleur.withValues(alpha: 0.35)),
+    ),
+    child: Text(
+      texte,
+      style: TextStyle(color: couleur, fontWeight: FontWeight.w700, fontSize: 12),
+    ),
+  );
 }

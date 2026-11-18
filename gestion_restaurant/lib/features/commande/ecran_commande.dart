@@ -6,6 +6,9 @@ import '../../models/modeles.dart';
 import '../../services/commande_service.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
+import '../../theme/animations.dart';
+import '../../theme/categories.dart';
+import '../../theme/identite.dart';
 import '../../widgets/commun.dart';
 
 /// Prise de commande (section 3.1) : catégories, grille d'articles, panier
@@ -56,7 +59,9 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
       if (widget.table == null && session == null) {
         libelle = 'À emporter ${heure(DateTime.now())}';
       }
-      return ref.read(commandeServiceProvider).validerTour(
+      return ref
+          .read(commandeServiceProvider)
+          .validerTour(
             serveuse: acteur,
             panier: List.of(_panier),
             table: widget.table,
@@ -64,8 +69,9 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
             couverts: widget.couverts,
             libelleAEmporter: libelle,
           );
-    }, succes: 'Commande envoyée à la caisse');
+    });
     if (!mounted) return;
+    if (id != null) celebrer(context, 'Envoyé en caisse');
     setState(() {
       _envoi = false;
       if (id != null) {
@@ -93,6 +99,10 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
       onCategorie: (c) => setState(() => _categorie = c),
       onArticle: _ajouter,
       favoris: _favoris,
+      quantites: {
+        for (final e in _panier)
+          e.article.id: _panier.where((x) => x.article.id == e.article.id).fold(0, (n, x) => n + x.quantite),
+      },
     );
     final panneau = _PanneauAddition(
       session: session,
@@ -104,18 +114,22 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(titre), actions: actionsBarre(context, ref)),
+      appBar: barreBraise(title: Text(titre), actions: actionsBarre(context, ref)),
       body: large
-          ? Row(children: [
-              Expanded(flex: 3, child: grille),
-              const VerticalDivider(width: 1),
-              SizedBox(width: 380, child: panneau),
-            ])
-          : Column(children: [
-              Expanded(flex: 3, child: grille),
-              const Divider(height: 1),
-              Expanded(flex: 2, child: panneau),
-            ]),
+          ? Row(
+              children: [
+                Expanded(flex: 3, child: grille),
+                const VerticalDivider(width: 1),
+                SizedBox(width: 380, child: panneau),
+              ],
+            )
+          : Column(
+              children: [
+                Expanded(flex: 3, child: grille),
+                const Divider(height: 1),
+                Expanded(flex: 2, child: panneau),
+              ],
+            ),
     );
   }
 }
@@ -125,6 +139,7 @@ class _GrilleArticles extends StatelessWidget {
   final List<Categorie> categories;
   final String categorie;
   final String favoris;
+  final Map<String, int> quantites;
   final ValueChanged<String> onCategorie;
   final ValueChanged<Article> onArticle;
   const _GrilleArticles({
@@ -132,6 +147,7 @@ class _GrilleArticles extends StatelessWidget {
     required this.categories,
     required this.categorie,
     required this.favoris,
+    required this.quantites,
     required this.onCategorie,
     required this.onArticle,
   });
@@ -139,90 +155,222 @@ class _GrilleArticles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actifs = articles.where((a) => a.actif).toList();
+    final indexCat = {for (var i = 0; i < categories.length; i++) categories[i].id: i};
     final List<Article> affiches;
     if (categorie == favoris) {
       // Articles favoris : les plus vendus en premier.
-      affiches = [...actifs]..sort((a, b) => b.nbVentes.compareTo(a.nbVentes));
+      affiches = ([...actifs]..sort((a, b) => b.nbVentes.compareTo(a.nbVentes))).take(24).toList();
     } else {
       affiches = actifs.where((a) => a.idCategorie == categorie).toList();
     }
-    return Column(children: [
-      SizedBox(
-        height: 60,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          children: [
-            _onglet('★ Favoris', favoris),
-            for (final c in categories) _onglet(c.nom, c.id),
-          ],
-        ),
-      ),
-      Expanded(
-        child: GridView.builder(
-          padding: const EdgeInsets.all(8),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 170,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 1.25,
+    return Column(
+      children: [
+        SizedBox(
+          height: 64,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            children: [
+              _onglet(context, '★ Favoris', favoris, Icons.star_rounded, identite.accent),
+              for (var i = 0; i < categories.length; i++)
+                _onglet(
+                  context,
+                  categories[i].nom,
+                  categories[i].id,
+                  iconeCategorie(categories[i].nom),
+                  couleurCategorie(i),
+                ),
+            ],
           ),
-          itemCount: categorie == favoris ? affiches.length.clamp(0, 24) : affiches.length,
-          itemBuilder: (context, i) => _BoutonArticle(article: affiches[i], onTap: onArticle),
         ),
-      ),
-    ]);
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: duree(context, 250),
+            child: GridView.builder(
+              key: ValueKey(categorie),
+              padding: const EdgeInsets.all(10),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 175,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.15,
+              ),
+              itemCount: affiches.length,
+              itemBuilder: (context, i) {
+                final a = affiches[i];
+                return Apparition(
+                  index: i,
+                  distance: 14,
+                  child: _BoutonArticle(
+                    article: a,
+                    couleur: couleurCategorie(indexCat[a.idCategorie] ?? 0),
+                    icone: iconeCategorie(categories.where((c) => c.id == a.idCategorie).firstOrNull?.nom ?? ''),
+                    quantite: quantites[a.id] ?? 0,
+                    onTap: onArticle,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  Widget _onglet(String nom, String id) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          label: Text(nom, style: const TextStyle(fontSize: 16)),
-          selected: categorie == id,
-          onSelected: (_) => onCategorie(id),
+  Widget _onglet(BuildContext context, String nom, String id, IconData icone, Color couleur) {
+    final actif = categorie == id;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Semantics(
+        button: true,
+        selected: actif,
+        label: nom,
+        excludeSemantics: true,
+        child: Pression(
+          onTap: () => onCategorie(id),
+          child: AnimatedContainer(
+            duration: duree(context, 250),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: actif ? couleur : identite.surface,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: actif ? couleur : identite.texte.withValues(alpha: 0.12)),
+              boxShadow: actif
+                  ? [BoxShadow(color: couleur.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 3))]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icone, size: 19, color: actif ? Colors.white : couleur),
+                const SizedBox(width: 6),
+                Text(
+                  nom.replaceFirst('★ ', ''),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: actif ? Colors.white : identite.texte,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _BoutonArticle extends StatelessWidget {
   final Article article;
+  final Color couleur;
+  final IconData icone;
+  final int quantite;
   final ValueChanged<Article> onTap;
-  const _BoutonArticle({required this.article, required this.onTap});
+  const _BoutonArticle({
+    required this.article,
+    required this.couleur,
+    required this.icone,
+    required this.quantite,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final a = article;
     final ok = a.vendable;
     final faible = ok && a.suiviStock && a.stock <= a.seuilAlerte;
-    return Material(
-      color: ok ? Theme.of(context).colorScheme.primaryContainer : Colors.grey.shade300,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+    final rayon = BorderRadius.circular(identite.arrondi);
+    return Semantics(
+      button: true,
+      enabled: ok,
+      label: '${a.nom} ${fcfa(a.prixVente)}${ok ? '' : ' Indisponible'}',
+      excludeSemantics: true,
+      child: Pression(
         onTap: ok ? () => onTap(a) : null,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(a.nom,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: ok ? null : Colors.grey.shade600)),
-              const SizedBox(height: 4),
-              Text(fcfa(a.prixVente), style: const TextStyle(fontSize: 15)),
-              if (!ok)
-                const Text('Indisponible',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-              if (faible)
-                Text('reste ${a.stock}',
-                    style: const TextStyle(color: couleurOccupee, fontWeight: FontWeight.bold)),
-            ],
-          ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: duree(context, 250),
+              decoration: BoxDecoration(
+                color: ok ? identite.surface : identite.texte.withValues(alpha: 0.06),
+                borderRadius: rayon,
+                border: Border.all(
+                  color: quantite > 0 ? couleur : identite.texte.withValues(alpha: 0.08),
+                  width: quantite > 0 ? 2.5 : 1,
+                ),
+                boxShadow: ok
+                    ? [
+                        BoxShadow(
+                          color: identite.nuit.withValues(alpha: 0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: ClipRRect(
+                borderRadius: rayon,
+                child: Column(
+                  children: [
+                    Container(height: 6, color: ok ? couleur : identite.texte.withValues(alpha: 0.15)),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(icone, size: 20, color: ok ? couleur : identite.texte.withValues(alpha: 0.3)),
+                            const Spacer(),
+                            Text(
+                              a.nom,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                height: 1.15,
+                                fontWeight: FontWeight.w700,
+                                color: ok ? identite.texte : identite.texte.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  fcfa(a.prixVente),
+                                  style: TextStyle(
+                                    fontFamily: identite.policeTitres,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: ok ? identite.principale : identite.texte.withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (!ok)
+                                  Text(
+                                    'Indisponible',
+                                    style: TextStyle(color: identite.erreur, fontWeight: FontWeight.w700, fontSize: 12),
+                                  ),
+                                if (faible)
+                                  Text(
+                                    'reste ${a.stock}',
+                                    style: TextStyle(color: couleurOccupee, fontWeight: FontWeight.w800, fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(right: -6, top: -8, child: BulleQuantite(quantite)),
+          ],
         ),
       ),
     );
@@ -250,78 +398,135 @@ class _PanneauAddition extends ConsumerWidget {
     final s = session;
     final lignes = s == null ? const <LigneCommande>[] : (ref.watch(lignesProvider(s.id)).value ?? const []);
     final ouverte = s == null || s.statut == StatutSession.ouverte;
-    return Column(children: [
-      Expanded(
-        child: ListView(
-          padding: const EdgeInsets.all(8),
-          children: [
-            if (panier.isNotEmpty) ...[
-              const Text('Nouveau tour (non envoyé)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              for (final e in panier) _LignePanier(element: e, panier: panier, onChange: onChange),
-              const Divider(),
-            ],
-            if (s != null) ...[
-              Row(children: [
-                Text('Addition · ${s.nbTours} tour${s.nbTours > 1 ? 's' : ''}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const Spacer(),
-                if (!ouverte) const Pastille('Addition demandée', couleurAddition),
-              ]),
-              for (final l in lignes) _LigneValidee(ligne: l, session: s),
-            ],
-            if (s == null && panier.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('Touchez un article pour l’ajouter', textAlign: TextAlign.center),
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              AnimatedSize(
+                duration: duree(context, 250),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: panier.isEmpty
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Material(
+                          color: Color.alphaBlend(identite.accent.withValues(alpha: 0.12), identite.surface),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(identite.arrondi),
+                            side: BorderSide(color: identite.accent.withValues(alpha: 0.5)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 4, 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.edit_note_rounded, color: identite.principale),
+                                    const SizedBox(width: 6),
+                                    const Text(
+                                      'Nouveau tour (pas encore envoyé)',
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                for (final e in panier)
+                                  _LignePanier(key: ObjectKey(e), element: e, panier: panier, onChange: onChange),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
               ),
-          ],
+              if (s != null) ...[
+                Row(
+                  children: [
+                    Text(
+                      'Addition · ${s.nbTours} tour${s.nbTours > 1 ? 's' : ''}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const Spacer(),
+                    if (!ouverte) Pastille('Addition demandée', couleurAddition),
+                  ],
+                ),
+                for (final l in lignes) _LigneValidee(ligne: l, session: s),
+              ],
+              if (s == null && panier.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('Touchez un article pour l’ajouter', textAlign: TextAlign.center),
+                ),
+            ],
+          ),
         ),
-      ),
-      Container(
-        padding: const EdgeInsets.all(12),
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Column(children: [
-          if (s != null)
-            Row(children: [
-              const Text('Total table', style: TextStyle(fontSize: 18)),
-              const Spacer(),
-              Text(fcfa(s.total), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            ]),
-          const SizedBox(height: 8),
-          Row(children: [
-            if (s != null && ouverte)
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: panier.isNotEmpty
-                      ? null
-                      : () async {
-                          final ok = await confirmer(context, 'Demander l’addition',
-                              'La table passera en bleu et la caisse sera prévenue.');
-                          if (!ok || !context.mounted) return;
-                          await essayer(
-                              context,
-                              () => ref
-                                  .read(commandeServiceProvider)
-                                  .demanderAddition(ref.read(acteurProvider)!, s),
-                              succes: 'Addition demandée');
-                          if (context.mounted) Navigator.pop(context);
-                        },
-                  child: const Text('Demander l’addition'),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: identite.surface,
+            border: Border(top: BorderSide(color: identite.texte.withValues(alpha: 0.08))),
+          ),
+          child: Column(
+            children: [
+              if (s != null)
+                Row(
+                  children: [
+                    const Text('Total table', style: TextStyle(fontSize: 18)),
+                    const Spacer(),
+                    MontantAnime(
+                      s.total,
+                      style: TextStyle(
+                        fontFamily: identite.policeTitres,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: identite.principale,
+                      ),
+                    ),
+                  ],
                 ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (s != null && ouverte)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: panier.isNotEmpty
+                            ? null
+                            : () async {
+                                final ok = await confirmer(
+                                  context,
+                                  'Demander l’addition',
+                                  'La table passera en bleu et la caisse sera prévenue.',
+                                );
+                                if (!ok || !context.mounted) return;
+                                await essayer(
+                                  context,
+                                  () =>
+                                      ref.read(commandeServiceProvider).demanderAddition(ref.read(acteurProvider)!, s),
+                                  succes: 'Addition demandée',
+                                );
+                                if (context.mounted) Navigator.pop(context);
+                              },
+                        child: const Text('Demander l’addition'),
+                      ),
+                    ),
+                  if (s != null && ouverte) const SizedBox(width: 8),
+                  if (ouverte)
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: panier.isEmpty || envoi ? null : onValider,
+                        child: Text(panier.isEmpty ? 'Valider' : 'Valider · ${fcfa(totalPanier)}'),
+                      ),
+                    ),
+                ],
               ),
-            if (s != null && ouverte) const SizedBox(width: 8),
-            if (ouverte)
-              Expanded(
-                child: FilledButton(
-                  onPressed: panier.isEmpty || envoi ? null : onValider,
-                  child: Text(panier.isEmpty ? 'Valider' : 'Valider · ${fcfa(totalPanier)}'),
-                ),
-              ),
-          ]),
-        ]),
-      ),
-    ]);
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -329,7 +534,7 @@ class _LignePanier extends StatelessWidget {
   final ElementPanier element;
   final List<ElementPanier> panier;
   final VoidCallback onChange;
-  const _LignePanier({required this.element, required this.panier, required this.onChange});
+  const _LignePanier({super.key, required this.element, required this.panier, required this.onChange});
 
   @override
   Widget build(BuildContext context) {
@@ -339,35 +544,45 @@ class _LignePanier extends StatelessWidget {
       title: Text(e.article.nom),
       subtitle: Text(e.note.isEmpty ? fcfa(e.montant) : '« ${e.note} » · ${fcfa(e.montant)}'),
       onTap: () async {
-        final note = await demanderTexte(context, 'Note pour ${e.article.nom}',
-            label: 'ex. bien glacée, sans piment', initial: e.note, obligatoire: false);
+        final note = await demanderTexte(
+          context,
+          'Note pour ${e.article.nom}',
+          label: 'ex. bien glacée, sans piment',
+          initial: e.note,
+          obligatoire: false,
+        );
         if (note != null) {
           e.note = note;
           onChange();
         }
       },
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        IconButton.filledTonal(
-          icon: const Icon(Icons.remove),
-          onPressed: () {
-            e.quantite--;
-            if (e.quantite <= 0) panier.remove(e);
-            onChange();
-          },
-        ),
-        SizedBox(
-          width: 32,
-          child: Text('${e.quantite}',
-              textAlign: TextAlign.center, style: const TextStyle(fontSize: 20)),
-        ),
-        IconButton.filledTonal(
-          icon: const Icon(Icons.add),
-          onPressed: () {
-            e.quantite++;
-            onChange();
-          },
-        ),
-      ]),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton.filledTonal(
+            icon: const Icon(Icons.remove),
+            onPressed: () {
+              e.quantite--;
+              if (e.quantite <= 0) panier.remove(e);
+              onChange();
+            },
+          ),
+          SizedBox(
+            width: 34,
+            child: ChiffreDefilant(
+              e.quantite,
+              style: TextStyle(fontFamily: identite.policeTitres, fontSize: 22, fontWeight: FontWeight.w800),
+            ),
+          ),
+          IconButton.filledTonal(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              e.quantite++;
+              onChange();
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -380,13 +595,16 @@ class _LigneValidee extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = ligne;
-    final style = l.annulee
-        ? const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey)
-        : null;
+    final style = l.annulee ? const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey) : null;
     return ListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(radius: 14, child: Text('${l.tour}', style: const TextStyle(fontSize: 12))),
+      leading: CircleAvatar(
+        radius: 14,
+        backgroundColor: identite.nuit,
+        foregroundColor: identite.accent,
+        child: Text('${l.tour}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+      ),
       title: Text('${l.quantite} × ${l.nom}${l.offert ? ' (offert)' : ''}', style: style),
       subtitle: Text(
         [
@@ -395,26 +613,32 @@ class _LigneValidee extends ConsumerWidget {
           if (l.annulee) 'annulé : ${l.motifAnnulation ?? ''} (validé par ${l.validePar ?? ''})',
         ].join(' · '),
       ),
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(fcfa(l.montant), style: style),
-        if (!l.annulee && l.idFacture == null)
-          IconButton(
-            tooltip: 'Demander l’annulation',
-            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-            onPressed: () async {
-              final motif = await demanderTexte(context, 'Annuler ${l.quantite} × ${l.nom} ?',
-                  label: 'Motif (obligatoire)');
-              if (motif == null || !context.mounted) return;
-              await essayer(
-                context,
-                () => ref
-                    .read(commandeServiceProvider)
-                    .demanderAnnulation(ref.read(acteurProvider)!, session, l, motif),
-                succes: 'Demande envoyée à l’administrateur',
-              );
-            },
-          ),
-      ]),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(fcfa(l.montant), style: style),
+          if (!l.annulee && l.idFacture == null)
+            IconButton(
+              tooltip: 'Demander l’annulation',
+              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+              onPressed: () async {
+                final motif = await demanderTexte(
+                  context,
+                  'Annuler ${l.quantite} × ${l.nom} ?',
+                  label: 'Motif (obligatoire)',
+                );
+                if (motif == null || !context.mounted) return;
+                await essayer(
+                  context,
+                  () => ref
+                      .read(commandeServiceProvider)
+                      .demanderAnnulation(ref.read(acteurProvider)!, session, l, motif),
+                  succes: 'Demande envoyée à l’administrateur',
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }
