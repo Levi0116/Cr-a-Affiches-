@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && FIREBASE_TOOLS_DIR=$(npm root -g)/firebase-tools NODE_OPTIONS=\"$NODE_OPTIONS --require ./test/emulateurs-sans-proxy-local.js\" firebase emulators:exec --project demo-resto --only auth,firestore,functions \"node --test --test-concurrency=1 test/*.test.js\"",
+    "test": "npm run build && node scripts/lancer-tests.js",
     "creer-restaurant": "npm run build && node lib/scripts/creer-restaurant.js"
   },
   "dependencies": {

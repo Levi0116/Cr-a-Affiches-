@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Version de production : accès au serveur, scan du QR code de liaison, notifications. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
-        android:label="gestion_restaurant"
+        android:label="Chez les Amani"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

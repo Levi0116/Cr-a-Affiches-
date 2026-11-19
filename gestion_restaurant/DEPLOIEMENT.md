@@ -2,6 +2,8 @@
 
 Ce guide met en service la version de production : le serveur en ligne (Firebase), l'application de caisse (web) et l'application des tablettes (Android). Il suit la section 9 du cahier des charges.
 
+> 🪟 **Sous Windows**, suivez plutôt le guide pas à pas détaillé, avec toutes les commandes PowerShell : [MISE_EN_SERVICE_WINDOWS.md](MISE_EN_SERVICE_WINDOWS.md).
+
 > **Toujours vérifier le projet actif** avant de déployer : `firebase use` affiche `resto-dev` ou `resto-prod`.
 
 ---
@@ -77,7 +79,7 @@ echo '{"rule":[{"action":{"type":"Delete"},"condition":{"age":14}}]}' > cycle.js
 gsutil lifecycle set cycle.json gs://resto-prod-sauvegardes
 ```
 
-Donner au compte de service des Cloud Functions le rôle **Cloud Datastore Import Export Admin** et l'accès au bucket. La fonction `sauvegardeQuotidienne` exporte la base chaque jour à 4 h (heure de Ouagadougou).
+Donner au compte de service des Cloud Functions (`NUMERO_PROJET-compute@developer.gserviceaccount.com`) le rôle **Cloud Datastore Import Export Admin** et l'accès au bucket (commandes exactes : guide Windows, § 7). La fonction `sauvegardeQuotidienne` exporte la base chaque jour à 4 h (heure de Ouagadougou).
 
 ---
 
@@ -134,7 +136,7 @@ keyAlias=amani
 storeFile=/chemin/vers/amani-release.jks
 ```
 
-et brancher la signature `release` dans `android/app/build.gradle.kts` (voir la documentation Flutter « Build and release an Android app »). Sans cette clé, aucune mise à jour de l'application ne sera possible.
+`android/app/build.gradle.kts` lit ce fichier automatiquement (sans lui, la version release est signée avec la clé de débogage). Sans cette clé, aucune mise à jour de l'application ne sera possible.
 
 ### Construire et installer
 

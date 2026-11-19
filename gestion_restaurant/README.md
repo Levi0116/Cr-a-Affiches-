@@ -71,7 +71,7 @@ flutter run -d <tablette>      # application des serveuses
 
 ## Mise en production avec Firebase
 
-Le guide complet, pas à pas, est dans **`DEPLOIEMENT.md`** : création des projets `resto-dev` et `resto-prod`, `flutterfire configure`, déploiement des règles, des Cloud Functions et de la caisse web, création du restaurant (`npm run creer-restaurant`), liaison des appareils, APK des tablettes, sauvegardes.
+Le guide complet, pas à pas, est dans **`DEPLOIEMENT.md`** : création des projets `resto-dev` et `resto-prod`, `flutterfire configure`, déploiement des règles, des Cloud Functions et de la caisse web, création du restaurant (`npm run creer-restaurant`), liaison des appareils, APK des tablettes, sauvegardes. Sous Windows : **`MISE_EN_SERVICE_WINDOWS.md`** (toutes les commandes PowerShell, liens de téléchargement, dépannage).
 
 En mode Firebase (`--dart-define=FIREBASE=true`), un appareil neuf affiche l'écran **« Lier cet appareil »** : l'administrateur ouvre *Administration → Appareils → Lier un appareil*, un QR code s'affiche (valable 15 minutes, usage unique) ; on le scanne ou on tape les 6 caractères. L'appareil reçoit alors l'accès aux seules données de son restaurant.
 

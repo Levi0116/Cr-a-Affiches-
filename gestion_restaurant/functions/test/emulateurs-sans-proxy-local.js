@@ -5,8 +5,13 @@
 // NO_PROXY. Ce module laisse passer en direct le seul trafic local (boucle
 // locale) ; tout le reste continue de passer par le proxy.
 const racine = process.env.FIREBASE_TOOLS_DIR;
-if (racine) {
-  const undici = require(require.resolve('undici', { paths: [racine] }));
+let undici = null;
+try {
+  if (racine) undici = require(require.resolve('undici', { paths: [racine] }));
+} catch {
+  // CLI installée autrement (ou sans undici) : aucun correctif nécessaire.
+}
+if (undici) {
   const ProxyAgentOrigine = undici.ProxyAgent;
   const direct = new undici.Agent();
   const LOCAUX = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
