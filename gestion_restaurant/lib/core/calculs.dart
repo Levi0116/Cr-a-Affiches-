@@ -110,3 +110,51 @@ int nouveauCoutMoyen({
 /// Format des numéros : FAC-AAAA-NNNNNN et AV-AAAA-NNNNNN (section 4.4).
 String numeroFacture(int annee, int sequence) => 'FAC-$annee-${sequence.toString().padLeft(6, '0')}';
 String numeroAvoir(int annee, int sequence) => 'AV-$annee-${sequence.toString().padLeft(6, '0')}';
+
+/// Billets et pièces du franc CFA (BCEAO), du plus grand au plus petit.
+class Coupure {
+  final int valeur;
+  final bool billet;
+  const Coupure(this.valeur, {required this.billet});
+}
+
+const coupuresFcfa = [
+  Coupure(10000, billet: true),
+  Coupure(5000, billet: true),
+  Coupure(2000, billet: true),
+  Coupure(1000, billet: true),
+  Coupure(500, billet: true),
+  Coupure(500, billet: false),
+  Coupure(250, billet: false),
+  Coupure(200, billet: false),
+  Coupure(100, billet: false),
+  Coupure(50, billet: false),
+  Coupure(25, billet: false),
+  Coupure(10, billet: false),
+  Coupure(5, billet: false),
+];
+
+/// Total d'un comptage de caisse ; [nombres] suit l'ordre de [coupuresFcfa].
+int totalComptage(List<int> nombres) {
+  if (nombres.length != coupuresFcfa.length) throw ArgumentError('Comptage incomplet');
+  var total = 0;
+  for (var i = 0; i < nombres.length; i++) {
+    if (nombres[i] < 0) throw ArgumentError('Nombre négatif');
+    total += nombres[i] * coupuresFcfa[i].valeur;
+  }
+  return total;
+}
+
+/// Montants que le client tend le plus souvent pour [total] : le montant
+/// exact, puis arrondi au billet supérieur (500, 1 000, 2 000, 5 000,
+/// 10 000), sans doublon, du plus petit au plus grand.
+List<int> montantsRapides(int total, {int maximum = 5}) {
+  if (total <= 0) return const [];
+  final s = <int>{total};
+  for (final b in const [500, 1000, 2000, 5000, 10000]) {
+    s.add(((total + b - 1) ~/ b) * b);
+  }
+  // Au-delà de 10 000 : le multiple de 10 000 suivant si différent.
+  if (total > 10000) s.add(((total ~/ 10000) + 1) * 10000);
+  return (s.toList()..sort()).take(maximum).toList();
+}

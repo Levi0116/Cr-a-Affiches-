@@ -127,6 +127,7 @@ class AnimatedTableCard extends StatelessWidget {
     final couleur = etat.couleur(p);
     final rayon = BorderRadius.circular(identite.arrondi);
     return Semantics(
+      container: true,
       button: true,
       label: 'Table ${table.numero}, ${etat.libelle}${s == null ? '' : ', ${fcfa(s.total)}, ${s.nomServeuse}'}',
       excludeSemantics: true,

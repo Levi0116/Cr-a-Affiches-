@@ -391,6 +391,7 @@ class _PuceUtilisateur extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.pal;
     return Semantics(
+      container: true,
       button: true,
       label: '$nom, changer d’utilisateur',
       excludeSemantics: true,
@@ -684,6 +685,7 @@ class _OngletZone extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: Semantics(
+        container: true,
         button: true,
         selected: actif,
         label: 'Zone $nom',
@@ -776,6 +778,7 @@ class _BoutonChoix extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.pal;
     return Semantics(
+      container: true,
       button: true,
       label: texte,
       excludeSemantics: true,
@@ -807,6 +810,7 @@ class _LigneAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.pal;
     return Semantics(
+      container: true,
       button: true,
       label: titre,
       excludeSemantics: true,

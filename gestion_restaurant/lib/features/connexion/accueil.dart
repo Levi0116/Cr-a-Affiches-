@@ -307,6 +307,7 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
               c.isEmpty
                   ? const SizedBox()
                   : Semantics(
+                      container: true,
                       button: true,
                       label: c == '⌫' ? 'Effacer' : c,
                       excludeSemantics: true,
@@ -404,6 +405,7 @@ class _CarteEmploye extends StatelessWidget {
   const _CarteEmploye({required this.employe});
   @override
   Widget build(BuildContext context) => Semantics(
+    container: true,
     button: true,
     label: '${employe.nom} ${employe.role.libelle}',
     child: Container(

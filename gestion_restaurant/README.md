@@ -46,6 +46,7 @@ Widgets animés : `BouncyTapWrapper` (enfoncement à 0,95 et retour élastique, 
 Écran par écran :
 - **Plan de salle :** les cartes apparaissent en cascade et changent de couleur en 300 ms quand l'état change ; les tables en attente d'addition ont un halo qui respire ; les montants comptent ; une barre flottante en verre dépoli porte les zones et le bouton « À emporter ».
 - **Commande :** toucher une table fait s'agrandir sa carte jusqu'à devenir l'en-tête (Hero) ; l'ajout d'un article fait « pop » sa pastille de quantité et glisser le ticket jusqu'à lui.
+- **Caisse :** en-tête avec indicateurs en direct (encaissé, en cours, additions à encaisser qui pulsent) et sélecteur de sections à indicateur glissant. La table la plus urgente s'ouvre d'office. Le ticket est présenté comme un reçu (tours, pointillés, total). Les factures s'encaissent sur un **pavé XXL** : billets FCFA qui s'additionnent (5 000 + 2 000), montants rapides, monnaie en grand, clavier physique accepté (chiffres, Entrée, Échap). Ouverture et clôture se font par **comptage des billets et pièces**, avec l'écart en direct (juste / manquant / excédent) et un tampon animé à la clôture.
 - **Partout :** le réglage « réduire les animations » de l'appareil est respecté, et les éléments qui bougent en boucle sont isolés (`RepaintBoundary`).
 
 ## Essayer tout de suite (mode démonstration)
@@ -122,7 +123,8 @@ lib/
   models/      modèle de données Firestore (section 7)
   services/    accès Firestore et règles métier : commande, caisse, stock, admin ; ticket 80 mm ; impression ; données de démo
   state/       providers Riverpod (flux temps réel)
-  features/    écrans : connexion, salle, commande, caisse, stock, admin
+  features/    écrans : connexion, salle, commande, caisse (tables, encaissement, comptage, factures,
+               ardoises, journée), stock, admin
   widgets/     éléments communs, indicateur de connexion
 test/          calculs + soirée simulée (commande → facture → encaissement → clôture, annulation, partage, ardoise, stock)
 firestore.rules, firebase.json, .firebaserc
@@ -134,4 +136,4 @@ firestore.rules, firebase.json, .firebaserc
 flutter test
 ```
 
-24 tests : calculs de facturation, scénarios complets sur une base Firestore simulée (`fake_cloud_firestore`), fiches techniques, consignes, rapports, export Excel et transition Hero carte de table → en-tête.
+30 tests : calculs de facturation, scénarios complets sur une base Firestore simulée (`fake_cloud_firestore`), fiches techniques, consignes, rapports, export Excel et transition Hero carte de table → en-tête, pavé d'encaissement et comptage de caisse.

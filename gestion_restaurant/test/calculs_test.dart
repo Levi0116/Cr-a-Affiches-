@@ -67,4 +67,23 @@ void main() {
   test('format FCFA', () {
     expect(fcfa(12500), '12 500 F');
   });
+
+  test('comptage de caisse par billets et pièces', () {
+    final n = List.filled(coupuresFcfa.length, 0);
+    n[0] = 3; // 3 × 10 000
+    n[3] = 2; // 2 × 1 000
+    n[5] = 1; // pièce de 500
+    n[12] = 4; // 4 × 5
+    expect(totalComptage(n), 32520);
+    expect(() => totalComptage([1, 2]), throwsArgumentError);
+    final neg = List.filled(coupuresFcfa.length, 0)..[1] = -1;
+    expect(() => totalComptage(neg), throwsArgumentError);
+  });
+
+  test('montants rapides proposés à l’encaissement', () {
+    expect(montantsRapides(5400), [5400, 5500, 6000, 10000]);
+    expect(montantsRapides(1000), [1000, 2000, 5000, 10000]);
+    expect(montantsRapides(23700), [23700, 24000, 25000, 30000]);
+    expect(montantsRapides(0), isEmpty);
+  });
 }

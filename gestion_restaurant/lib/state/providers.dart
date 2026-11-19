@@ -216,3 +216,10 @@ final reseauProvider = StreamProvider<bool>((ref) async* {
   }
   yield* c.onConnectivityChanged.map(connecte);
 });
+
+/// Horloge partagée, une mise à jour par minute (« ouverte depuis 42 min »).
+/// Un seul minuteur pour toute l'application, au lieu d'un par carte.
+final horlogeProvider = StreamProvider<DateTime>((ref) async* {
+  yield DateTime.now();
+  yield* Stream.periodic(const Duration(seconds: 30), (_) => DateTime.now());
+});

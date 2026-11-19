@@ -718,6 +718,7 @@ class GradientActionButton extends StatelessWidget {
     final actif = onPressed != null;
     final c = couleur ?? p.principale;
     return Semantics(
+      container: true,
       button: true,
       enabled: actif,
       label: label,

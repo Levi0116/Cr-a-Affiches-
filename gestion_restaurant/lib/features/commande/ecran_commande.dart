@@ -320,6 +320,7 @@ class _BoutonRond extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
+    container: true,
     button: true,
     label: label,
     excludeSemantics: true,
@@ -436,6 +437,7 @@ class _GrilleArticles extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Semantics(
+        container: true,
         button: true,
         selected: actif,
         label: nom,
@@ -495,6 +497,7 @@ class _BoutonArticle extends StatelessWidget {
     final rayon = BorderRadius.circular(identite.arrondi);
     final choisi = quantite > 0;
     return Semantics(
+      container: true,
       button: true,
       enabled: ok,
       label: '${a.nom} ${fcfa(a.prixVente)}${ok ? '' : ' Indisponible'}${choisi ? ', $quantite dans le panier' : ''}',
@@ -811,6 +814,7 @@ class _BoutonQuantite extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.pal;
     return Semantics(
+      container: true,
       button: true,
       label: label,
       excludeSemantics: true,
