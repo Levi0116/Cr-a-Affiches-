@@ -7,7 +7,7 @@ import '../../core/stock_calc.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
-import '../../theme/animations.dart';
+import '../../theme/animated_widgets.dart';
 import '../../theme/identite.dart';
 import '../../widgets/commun.dart';
 import '../caisse/ecran_caisse.dart';
@@ -124,7 +124,7 @@ class _TableauDeBord extends ConsumerWidget {
     var n = 0;
     Widget tuile(String titre, IconData icone, Widget valeur, {Color? couleur}) {
       final c = couleur ?? identite.principale;
-      return Apparition(
+      return StaggeredEntrance(
         index: n++,
         child: Container(
           width: 230,
@@ -182,12 +182,12 @@ class _TableauDeBord extends ConsumerWidget {
           spacing: 12,
           runSpacing: 12,
           children: [
-            tuile('Chiffre d’affaires du jour', Icons.trending_up_rounded, MontantAnime(ca, style: stTitre)),
+            tuile('Chiffre d’affaires du jour', Icons.trending_up_rounded, SmoothCounterText(ca, style: stTitre)),
             tuile('Factures du jour', Icons.receipt_long_rounded, Text('${vendues.length}'), couleur: identite.accent),
             tuile(
               'En cours (${sessions.length} tables)',
               Icons.table_restaurant_rounded,
-              MontantAnime(enCours, style: stTitre),
+              SmoothCounterText(enCours, style: stTitre),
               couleur: couleurOccupee,
             ),
             tuile(
@@ -205,7 +205,7 @@ class _TableauDeBord extends ConsumerWidget {
             tuile(
               'Ardoises en cours',
               Icons.menu_book_rounded,
-              MontantAnime(ardoises.fold(0, (s, a) => s + a.montantDu), style: stTitre),
+              SmoothCounterText(ardoises.fold(0, (s, a) => s + a.montantDu), style: stTitre),
               couleur: couleurAddition,
             ),
           ],
@@ -250,7 +250,7 @@ class _Validations extends ConsumerWidget {
           padding: const EdgeInsets.all(12),
           children: [
             for (final (i, d) in liste.indexed)
-              Apparition(
+              StaggeredEntrance(
                 index: i,
                 child: Card(
                   child: Padding(
@@ -269,7 +269,7 @@ class _Validations extends ConsumerWidget {
                               label: const Text('Valider'),
                               onPressed: () => essayer(context, () async {
                                 await ref.read(adminServiceProvider).traiterDemande(ref.read(acteurProvider)!, d, true);
-                                if (context.mounted) celebrer(context, 'Validé');
+                                if (context.mounted) showSuccessBurst(context, 'Validé');
                               }),
                             ),
                             const SizedBox(width: 8),

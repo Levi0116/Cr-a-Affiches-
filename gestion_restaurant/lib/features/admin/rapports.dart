@@ -9,7 +9,7 @@ import '../../services/export_rapport.dart';
 import '../../services/impression/impression.dart';
 import '../../services/impression/telechargement.dart';
 import '../../state/providers.dart';
-import '../../theme/animations.dart';
+import '../../theme/animated_widgets.dart';
 import '../../theme/identite.dart';
 import '../../widgets/commun.dart';
 
@@ -354,7 +354,7 @@ class _Kpi extends StatelessWidget {
       fontWeight: FontWeight.w800,
       color: mis ? Colors.white : identite.texte,
     );
-    return Apparition(
+    return StaggeredEntrance(
       index: index,
       child: Container(
         width: 240,
@@ -369,7 +369,7 @@ class _Kpi extends StatelessWidget {
           children: [
             Text(titre, style: TextStyle(color: mis ? identite.accent : identite.texte.withValues(alpha: 0.65))),
             const SizedBox(height: 4),
-            monnaie ? MontantAnime(valeur, style: style) : Text('$valeur', style: style),
+            monnaie ? SmoothCounterText(valeur, style: style) : Text('$valeur', style: style),
             const SizedBox(height: 4),
             Row(
               children: [

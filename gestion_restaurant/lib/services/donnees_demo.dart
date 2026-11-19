@@ -1,17 +1,18 @@
 import '../core/pin.dart';
 import 'db.dart';
 
-/// Remplit un restaurant de démonstration (maquis ivoirien type).
+/// Remplit le restaurant de démonstration « Chez les Amani » (menu type).
 ///
 /// PIN de démonstration : Awa 1111, Fatou 2222, Koffi (caisse) 3333,
 /// Moussa (stock) 4444, Patron (admin) 0000.
 Future<void> remplirDemo(RestoDb db) async {
   final b = db.fs.batch();
   b.set(db.resto, {
-    'nom': 'Maquis Le Bon Coin',
-    'adresse': 'Rue des Jardins, Cocody, Abidjan',
-    'telephone': '07 00 00 00 00',
-    'mentionsFacture': 'RCCM CI-ABJ-2026-B-00000',
+    'nom': 'Restaurant Chez les Amani',
+    // Adresse à compléter par l'administrateur dans les paramètres.
+    'adresse': '',
+    'telephone': '+226 65 91 11 76',
+    'mentionsFacture': '',
     'messageBasTicket': 'Merci et à bientôt !',
     'soumisTva': false,
     'tauxTva': 18,

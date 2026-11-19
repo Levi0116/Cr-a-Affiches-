@@ -24,20 +24,29 @@ Cette première livraison couvre l'**Étape 1 (MVP)** du cahier des charges (pha
 
 ## Design et identité visuelle
 
-L'application porte une identité **provisoire** nommée « Braise » : terre cuite, or du mil, nuit d'ébène et indigo, titres en Fraunces, texte en Outfit, et un motif géométrique original inspiré des tissages d'Afrique de l'Ouest, dessiné par le code (aucune image).
+Identité **Restaurant Chez les Amani**, tirée du logo : orange cloche, vert forêt et crème. Le logo détouré (`assets/images/logo_amani.png`) sert aussi d'icône à l'application web et Android.
 
-**Pour appliquer la charte du restaurant, un seul fichier à modifier : `lib/theme/identite.dart`.**
+Deux ambiances, selon le module :
+- **sombre « obsidienne verte »** : connexion, plan de salle, prise de commande (moins d'éblouissement le soir, couleurs d'état plus vives) ;
+- **claire « crème »** : caisse, stock, administration.
 
-| Élément | Où le changer |
+États des tables : émeraude (libre), ambre (occupée), bleu électrique (addition demandée). Ces teintes ont été vérifiées (contraste et daltonisme), et chaque état est aussi écrit en toutes lettres avec une icône : la couleur n'est jamais le seul indice.
+
+Polices : **Plus Jakarta Sans** (titres, montants) et **Inter** (interface), embarquées pour fonctionner hors ligne. Tous les montants, compteurs et heures utilisent des chiffres à chasse fixe (`FontFeature.tabularFigures()`), pour qu'un total qui change ne fasse pas trembler l'écran.
+
+| Fichier | Rôle |
 |---|---|
-| Couleurs (principale, accent, fond, états des tables…) | `identite.dart`, codes `0xFFRRGGBB` |
-| Polices | déposer les `.ttf` dans `assets/fonts/`, les déclarer dans `pubspec.yaml`, mettre leur nom dans `identite.dart` |
-| Logo | déposer l'image dans `assets/images/`, l'ajouter dans `pubspec.yaml` (rubrique `assets`), indiquer `logoAsset` |
-| Motif décoratif | `motif: false` pour le retirer |
-| Arrondis | `arrondi` |
-| Animations | `vitesseAnimations` (1 = normal, 0 = aucune) |
+| `lib/theme/identite.dart` | **le seul fichier à modifier** pour une autre charte : couleurs, polices, logo, arrondis, vitesse des animations |
+| `lib/theme/app_theme.dart` | thèmes clair et sombre, palette `context.pal`, styles de texte (`AppTypo`), ombres multicouches, dégradé des actions principales, transition entre écrans |
+| `lib/theme/animated_widgets.dart` | widgets animés réutilisables (liste ci-dessous) |
+| `lib/widgets/animated_table_card.dart` | carte de table animée et fond partagé (Hero) avec l'en-tête de commande |
 
-Animations : montants qui comptent jusqu'à leur nouvelle valeur, rebond des boutons à l'appui, apparition des cartes en cascade, halo qui respire sur les tables en attente de paiement, secousse du code PIN faux, bulle de quantité sur les articles, coche « Envoyé en caisse », tampon « PAYÉE », barres de graphiques qui poussent, transitions d'écran. Le réglage « réduire les animations » de l'appareil est respecté.
+Widgets animés : `BouncyTapWrapper` (enfoncement à 0,95 et retour élastique, avec vibration légère), `SmoothCounterText` (montant qui compte), `StaggeredEntrance` (cascade de 250 ms sur 15 px), `PulseGlow` et `PulseAlertBadge` (halo et pastille « Addition »), `OfflineStatusPill` (En ligne / Synchronisation / Hors ligne – N en attente), `ShimmerLoading`, `GlassPanel` (verre dépoli), `GradientActionButton`, `QuantityBadge`, `RollingNumber`, `ShakeWrapper`, `showSuccessBurst`, `showStamp`.
+
+Écran par écran :
+- **Plan de salle :** les cartes apparaissent en cascade et changent de couleur en 300 ms quand l'état change ; les tables en attente d'addition ont un halo qui respire ; les montants comptent ; une barre flottante en verre dépoli porte les zones et le bouton « À emporter ».
+- **Commande :** toucher une table fait s'agrandir sa carte jusqu'à devenir l'en-tête (Hero) ; l'ajout d'un article fait « pop » sa pastille de quantité et glisser le ticket jusqu'à lui.
+- **Partout :** le réglage « réduire les animations » de l'appareil est respecté, et les éléments qui bougent en boucle sont isolés (`RepaintBoundary`).
 
 ## Essayer tout de suite (mode démonstration)
 
@@ -125,4 +134,4 @@ firestore.rules, firebase.json, .firebaserc
 flutter test
 ```
 
-23 tests : calculs de facturation, scénarios complets sur une base Firestore simulée (`fake_cloud_firestore`), fiches techniques, consignes, rapports et export Excel.
+24 tests : calculs de facturation, scénarios complets sur une base Firestore simulée (`fake_cloud_firestore`), fiches techniques, consignes, rapports, export Excel et transition Hero carte de table → en-tête.

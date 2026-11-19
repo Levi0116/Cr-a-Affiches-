@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../services/db.dart';
+import '../theme/animated_widgets.dart';
+import '../theme/app_theme.dart';
 import '../theme/identite.dart';
 
 /// Couleurs d'état des tables (section 3.1), lues dans l'identité visuelle.
@@ -154,16 +156,34 @@ Future<bool> confirmer(BuildContext context, String titre, String message) async
     ) ??
     false;
 
-/// Affiche un AsyncValue sans répéter la gestion chargement / erreur.
+/// Chargement (reflet « shimmer » sur des lignes fantômes) ou erreur.
 class Chargement extends StatelessWidget {
   final Object? erreur;
   const Chargement({super.key, this.erreur});
   @override
-  Widget build(BuildContext context) => Center(
-    child: erreur == null
-        ? const CircularProgressIndicator()
-        : Text('Erreur : $erreur', style: const TextStyle(color: Colors.red)),
-  );
+  Widget build(BuildContext context) {
+    if (erreur != null) {
+      return Center(
+        child: Text('Erreur : $erreur', style: TextStyle(color: context.pal.erreur)),
+      );
+    }
+    // Défilement bloqué : jamais de débordement, même dans un petit espace.
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: ShimmerLoading(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < 6; i++) ...[
+              ShimmerBlock(hauteur: 64, largeur: i.isEven ? double.infinity : 520),
+              const SizedBox(height: 12),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class Pastille extends StatelessWidget {

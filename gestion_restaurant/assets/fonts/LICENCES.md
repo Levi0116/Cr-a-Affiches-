@@ -1,7 +1,8 @@
 # Polices embarquées
 
-- **Fraunces** (Undercase Type) : SIL Open Font License 1.1 — https://fonts.google.com/specimen/Fraunces
-- **Outfit** (Rodrigo Fuenzalida) : SIL Open Font License 1.1 — https://fonts.google.com/specimen/Outfit
+- **Plus Jakarta Sans** (Tokotype) : SIL Open Font License 1.1 — https://fonts.google.com/specimen/Plus+Jakarta+Sans
+- **Inter** (Rasmus Andersson) : SIL Open Font License 1.1 — https://fonts.google.com/specimen/Inter
 
 Texte de la licence : https://openfontlicense.org
-Les polices sont embarquées dans l'application pour fonctionner hors ligne.
+Les polices sont embarquées dans l'application (et non chargées depuis
+Google Fonts à chaque lancement) pour fonctionner hors ligne en plein service.

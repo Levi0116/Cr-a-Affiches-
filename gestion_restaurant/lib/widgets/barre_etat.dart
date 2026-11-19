@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../state/providers.dart';
-import '../theme/animations.dart';
+import '../theme/animated_widgets.dart';
 import '../theme/identite.dart';
 import '../theme/motif.dart';
 
@@ -21,40 +21,18 @@ PreferredSizeWidget barreBraise({
   toolbarHeight: 64,
 );
 
-/// « En ligne » en vert, ou « Hors ligne – N actions en attente » en orange
-/// (section 6.3).
+/// Badge réseau : connexion de l'appareil + écritures pas encore confirmées
+/// par le serveur (section 6.3).
 class IndicateurConnexion extends ConsumerWidget {
-  const IndicateurConnexion({super.key});
+  final bool compact;
+  const IndicateurConnexion({super.key, this.compact = false});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final db = ref.watch(dbProvider);
+    final enLigne = ref.watch(reseauProvider).value ?? true;
     return ValueListenableBuilder<int>(
       valueListenable: db.enAttente,
-      builder: (context, n, _) {
-        final couleur = n == 0 ? identite.tableLibre : identite.tableOccupee;
-        return AnimatedContainer(
-          duration: duree(context, 300),
-          padding: const EdgeInsets.fromLTRB(4, 3, 12, 3),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: couleur.withValues(alpha: 0.7)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PointPulsant(couleur: couleur),
-              AnimatedSize(
-                duration: duree(context, 300),
-                child: Text(
-                  n == 0 ? 'En ligne' : 'Hors ligne – $n action${n > 1 ? 's' : ''} en attente',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (context, n, _) => OfflineStatusPill(enLigne: enLigne, enAttente: n, compact: compact),
     );
   }
 }

@@ -7,7 +7,7 @@ import '../../core/stock_calc.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
-import '../../theme/animations.dart';
+import '../../theme/animated_widgets.dart';
 import '../../theme/identite.dart';
 import '../../widgets/commun.dart';
 
@@ -83,7 +83,7 @@ class _ListeArticles extends ConsumerWidget {
               ),
             if (liste.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Rien à signaler')),
             for (final (i, a) in liste.indexed)
-              Apparition(
+              StaggeredEntrance(
                 index: i,
                 child: Card(
                   child: ListTile(
@@ -287,7 +287,7 @@ class _Consignes extends ConsumerWidget {
           child: Text('${qte(total)} bouteille(s) vide(s) à rendre', style: Theme.of(context).textTheme.titleMedium),
         ),
         for (final (i, a) in articles.indexed)
-          Apparition(
+          StaggeredEntrance(
             index: i,
             child: Card(
               child: ListTile(

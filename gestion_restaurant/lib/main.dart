@@ -11,8 +11,7 @@ import 'firebase_options.dart';
 import 'services/db.dart';
 import 'services/donnees_demo.dart';
 import 'state/providers.dart';
-import 'theme/identite.dart';
-import 'theme/theme.dart';
+import 'theme/app_theme.dart';
 
 /// `--dart-define=FIREBASE=true` : vraie base Firestore (après
 /// `flutterfire configure`). Sinon : mode démonstration en mémoire.
@@ -45,7 +44,7 @@ class GestionRestaurantApp extends StatelessWidget {
     return MaterialApp(
       title: 'Gestion restaurant',
       debugShowCheckedModeBanner: false,
-      theme: construireTheme(identite),
+      theme: AppTheme.clair,
       locale: const Locale('fr'),
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

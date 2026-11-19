@@ -6,26 +6,48 @@ import '../../core/stock_calc.dart';
 import '../../models/modeles.dart';
 import '../../services/commande_service.dart';
 import '../../state/providers.dart';
-import '../../widgets/barre_etat.dart';
-import '../../theme/animations.dart';
+import '../../theme/animated_widgets.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/categories.dart';
 import '../../theme/identite.dart';
+import '../../widgets/animated_table_card.dart';
+import '../../widgets/barre_etat.dart';
 import '../../widgets/commun.dart';
 
-/// Prise de commande (section 3.1) : catégories, grille d'articles, panier
-/// local modifiable librement avant validation, tours horodatés.
-class EcranCommande extends ConsumerStatefulWidget {
+/// ============================================================================
+///  PRISE DE COMMANDE (section 3.1) — ambiance sombre
+/// ============================================================================
+///
+/// En-tête = la carte de la table, agrandie (Hero). Catégories en onglets,
+/// grille d'articles (1 touche = 1 unité), ticket à droite (ou en bas sur
+/// téléphone) qui défile tout seul jusqu'au dernier ajout. Trois touches
+/// maximum pour ajouter un article : catégorie → article → valider.
+class EcranCommande extends StatelessWidget {
   final TableResto? table; // null = vente « à emporter »
   final String? idSession;
   final int couverts;
   const EcranCommande({super.key, this.table, this.idSession, this.couverts = 0});
 
   @override
-  ConsumerState<EcranCommande> createState() => _EcranCommandeState();
+  Widget build(BuildContext context) => Theme(
+    data: AppTheme.sombre,
+    child: _Commande(table: table, idSession: idSession, couverts: couverts),
+  );
 }
 
-class _EcranCommandeState extends ConsumerState<EcranCommande> {
+class _Commande extends ConsumerStatefulWidget {
+  final TableResto? table;
+  final String? idSession;
+  final int couverts;
+  const _Commande({required this.table, required this.idSession, required this.couverts});
+
+  @override
+  ConsumerState<_Commande> createState() => _CommandeState();
+}
+
+class _CommandeState extends ConsumerState<_Commande> {
   static const _favoris = '__favoris__';
+  final _defilementTicket = ScrollController();
   String? _idSession;
   String _categorie = _favoris;
   final List<ElementPanier> _panier = [];
@@ -35,6 +57,12 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
   void initState() {
     super.initState();
     _idSession = widget.idSession;
+  }
+
+  @override
+  void dispose() {
+    _defilementTicket.dispose();
+    super.dispose();
   }
 
   int get _totalPanier => _panier.fold(0, (s, e) => s + e.montant);
@@ -47,6 +75,21 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
         existant.first.quantite++;
       } else {
         _panier.add(ElementPanier(a));
+      }
+    });
+    _defilerEnBas();
+  }
+
+  /// Fait glisser doucement le ticket jusqu'au dernier article ajouté.
+  void _defilerEnBas() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_defilementTicket.hasClients) return;
+      final d = duree(context, 380);
+      final cible = _defilementTicket.position.maxScrollExtent;
+      if (d == Duration.zero) {
+        _defilementTicket.jumpTo(cible);
+      } else {
+        _defilementTicket.animateTo(cible, duration: d, curve: Curves.easeOutCubic);
       }
     });
   }
@@ -72,7 +115,7 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
           );
     });
     if (!mounted) return;
-    if (id != null) celebrer(context, 'Envoyé en caisse');
+    if (id != null) showSuccessBurst(context, 'Envoyé en caisse');
     setState(() {
       _envoi = false;
       if (id != null) {
@@ -80,21 +123,20 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
         _panier.clear();
       }
     });
+    _defilerEnBas();
   }
 
   @override
   Widget build(BuildContext context) {
-    final sessions = ref.watch(sessionsEnCoursProvider).value ?? const [];
+    final p = context.pal;
+    final sessions = ref.watch(sessionsEnCoursProvider).value ?? const <SessionTable>[];
     final session = sessions.where((s) => s.id == _idSession).firstOrNull;
-    final articles = ref.watch(articlesProvider).value ?? const [];
+    final articles = ref.watch(articlesProvider).value ?? const <Article>[];
     // Seules les catégories qui ont des articles au menu (pas « Ingrédients »).
     final categories = (ref.watch(categoriesProvider).value ?? const <Categorie>[])
         .where((c) => articles.any((a) => a.auMenu && a.idCategorie == c.id))
         .toList();
-    final titre = widget.table != null
-        ? 'Table ${session?.numeroTable ?? widget.table!.numero}'
-        : (session?.numeroTable ?? 'À emporter');
-    final large = MediaQuery.sizeOf(context).width >= 760;
+    final large = MediaQuery.sizeOf(context).width >= 860;
 
     final grille = _GrilleArticles(
       articles: articles,
@@ -109,35 +151,195 @@ class _EcranCommandeState extends ConsumerState<EcranCommande> {
           e.article.id: _panier.where((x) => x.article.id == e.article.id).fold(0, (n, x) => n + x.quantite),
       },
     );
-    final panneau = _PanneauAddition(
+    final ticket = _Ticket(
       session: session,
       panier: _panier,
       totalPanier: _totalPanier,
       envoi: _envoi,
+      defilement: _defilementTicket,
       onChange: () => setState(() {}),
       onValider: () => _valider(session),
     );
 
     return Scaffold(
-      appBar: barreBraise(title: Text(titre), actions: actionsBarre(context, ref)),
-      body: large
-          ? Row(
-              children: [
-                Expanded(flex: 3, child: grille),
-                const VerticalDivider(width: 1),
-                SizedBox(width: 380, child: panneau),
-              ],
-            )
-          : Column(
-              children: [
-                Expanded(flex: 3, child: grille),
-                const Divider(height: 1),
-                Expanded(flex: 2, child: panneau),
-              ],
-            ),
+      backgroundColor: p.fond,
+      body: Column(
+        children: [
+          _EnTeteCommande(table: widget.table, session: session, couvertsAnnonces: widget.couverts),
+          Expanded(
+            child: large
+                ? Row(
+                    children: [
+                      Expanded(child: grille),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 12, 14, 14),
+                        child: SizedBox(width: 400, child: ticket),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      Expanded(flex: 5, child: grille),
+                      Expanded(
+                        flex: 4,
+                        child: Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 10), child: ticket),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
+
+// ============================================================== En-tête
+
+/// La carte de la table, agrandie : même fond (Hero), même couleur d'état.
+class _EnTeteCommande extends ConsumerWidget {
+  final TableResto? table;
+  final SessionTable? session;
+  final int couvertsAnnonces;
+  const _EnTeteCommande({required this.table, required this.session, required this.couvertsAnnonces});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.pal;
+    final s = session;
+    final etat = etatDe(s);
+    final couleur = table == null ? p.principale : etat.couleur(p);
+    const rayon = BorderRadius.vertical(bottom: Radius.circular(30));
+    final etroit = MediaQuery.sizeOf(context).width < 640;
+    final titre = table != null ? 'Table ${s?.numeroTable ?? table!.numero}' : (s?.numeroTable ?? 'À emporter');
+    final couverts = s?.couverts ?? couvertsAnnonces;
+    final details = [
+      if (s != null) s.nomServeuse,
+      if (s != null) 'ouverte à ${heure(s.ouverture)}',
+      if (couverts > 0) '$couverts couvert${couverts > 1 ? 's' : ''}',
+      if (s != null && s.nbTours > 0) '${s.nbTours} tour${s.nbTours > 1 ? 's' : ''}',
+    ].join(' · ');
+    final blancDoux = Colors.white.withValues(alpha: 0.85);
+
+    return SizedBox(
+      height: (etroit ? 132 : 150) + MediaQuery.paddingOf(context).top,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: table != null
+                ? FondTableHero(idTable: table!.id, couleur: couleur, rayon: rayon)
+                : DecoratedBox(
+                    decoration: BoxDecoration(gradient: degradePrincipal(couleur), borderRadius: rayon),
+                  ),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(10, 8, etroit ? 14 : 22, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: _BoutonRond(
+                      icone: Icons.arrow_back_rounded,
+                      label: 'Retour au plan de salle',
+                      onTap: () => Navigator.maybePop(context),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(table == null ? Icons.shopping_bag_rounded : etat.icone, color: blancDoux, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              table == null ? 'Vente à emporter' : etat.libelle,
+                              style: AppTypo.etiquette(blancDoux, taille: 14, poids: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          titre,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypo.chiffres(AppTypo.titre(Colors.white, taille: etroit ? 30 : 38)),
+                        ),
+                        if (details.isNotEmpty)
+                          Text(
+                            details,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypo.chiffres(AppTypo.etiquette(blancDoux, taille: 14, poids: FontWeight.w500)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IndicateurConnexion(compact: etroit),
+                          const SizedBox(width: 8),
+                          _BoutonRond(
+                            icone: Icons.logout_rounded,
+                            label: 'Changer d’utilisateur',
+                            onTap: () {
+                              Navigator.of(context).popUntil((r) => r.isFirst);
+                              ref.read(utilisateurProvider.notifier).deconnecter();
+                            },
+                          ),
+                        ],
+                      ),
+                      if (s != null) ...[
+                        Text('Total table', style: AppTypo.etiquette(blancDoux, taille: 13)),
+                        SmoothCounterText(s.total, style: AppTypo.montant(Colors.white, taille: etroit ? 24 : 30)),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BoutonRond extends StatelessWidget {
+  final IconData icone;
+  final String label;
+  final VoidCallback onTap;
+  const _BoutonRond({required this.icone, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    excludeSemantics: true,
+    child: BouncyTapWrapper(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.22),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+        ),
+        child: Icon(icone, color: Colors.white),
+      ),
+    ),
+  );
+}
+
+// ============================================================ Articles
 
 class _GrilleArticles extends StatelessWidget {
   final List<Article> articles;
@@ -161,6 +363,7 @@ class _GrilleArticles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.pal;
     final actifs = articles.where((a) => a.auMenu).toList();
     final indexCat = {for (var i = 0; i < categories.length; i++) categories[i].id: i};
     final List<Article> affiches;
@@ -173,12 +376,12 @@ class _GrilleArticles extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          height: 64,
+          height: 76,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
             children: [
-              _onglet(context, '★ Favoris', favoris, Icons.star_rounded, identite.accent),
+              _onglet(context, 'Favoris', favoris, Icons.star_rounded, p.accent),
               for (var i = 0; i < categories.length; i++)
                 _onglet(
                   context,
@@ -192,22 +395,22 @@ class _GrilleArticles extends StatelessWidget {
         ),
         Expanded(
           child: AnimatedSwitcher(
-            duration: duree(context, 250),
+            duration: duree(context, 220),
+            switchInCurve: Curves.easeOutCubic,
             child: GridView.builder(
               key: ValueKey(categorie),
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 175,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.15,
+                maxCrossAxisExtent: 190,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 1.12,
               ),
               itemCount: affiches.length,
               itemBuilder: (context, i) {
                 final a = affiches[i];
-                return Apparition(
+                return StaggeredEntrance(
                   index: i,
-                  distance: 14,
                   child: _BoutonArticle(
                     article: a,
                     couleur: couleurCategorie(indexCat[a.idCategorie] ?? 0),
@@ -226,7 +429,10 @@ class _GrilleArticles extends StatelessWidget {
   }
 
   Widget _onglet(BuildContext context, String nom, String id, IconData icone, Color couleur) {
+    final p = context.pal;
     final actif = categorie == id;
+    // Texte lisible quelle que soit la teinte de l'onglet actif (crème → sombre).
+    final surActif = couleur.computeLuminance() > 0.5 ? identite.secondaire : Colors.white;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Semantics(
@@ -234,34 +440,26 @@ class _GrilleArticles extends StatelessWidget {
         selected: actif,
         label: nom,
         excludeSemantics: true,
-        child: Pression(
+        child: BouncyTapWrapper(
           onTap: () => onCategorie(id),
           child: AnimatedContainer(
             duration: duree(context, 250),
             curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: actif ? couleur : identite.surface,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: actif ? couleur : identite.texte.withValues(alpha: 0.12)),
-              boxShadow: actif
-                  ? [BoxShadow(color: couleur.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 3))]
-                  : null,
+              color: actif ? couleur : p.surface,
+              borderRadius: BorderRadius.circular(identite.arrondi * 0.8),
+              border: Border.all(color: actif ? couleur : p.bordure),
+              boxShadow: actif ? AppOmbres.lueur(couleur, force: 0.8) : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icone, size: 19, color: actif ? Colors.white : couleur),
-                const SizedBox(width: 6),
-                Text(
-                  nom.replaceFirst('★ ', ''),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: actif ? Colors.white : identite.texte,
-                  ),
-                ),
+                Icon(icone, size: 20, color: actif ? surActif : couleur),
+                const SizedBox(width: 8),
+                Text(nom, style: AppTypo.etiquette(actif ? surActif : p.texte, taille: 16, poids: FontWeight.w700)),
               ],
             ),
           ),
@@ -289,98 +487,80 @@ class _BoutonArticle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.pal;
     final a = article;
     final ok = a.estVendable(portions);
     final reste = a.reste(portions);
     final faible = ok && reste != null && reste <= (a.aRecette ? 3 : a.seuilAlerte);
     final rayon = BorderRadius.circular(identite.arrondi);
+    final choisi = quantite > 0;
     return Semantics(
       button: true,
       enabled: ok,
-      label: '${a.nom} ${fcfa(a.prixVente)}${ok ? '' : ' Indisponible'}',
+      label: '${a.nom} ${fcfa(a.prixVente)}${ok ? '' : ' Indisponible'}${choisi ? ', $quantite dans le panier' : ''}',
       excludeSemantics: true,
-      child: Pression(
+      child: BouncyTapWrapper(
         onTap: ok ? () => onTap(a) : null,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             AnimatedContainer(
               duration: duree(context, 250),
+              curve: Curves.easeOutCubic,
               decoration: BoxDecoration(
-                color: ok ? identite.surface : identite.texte.withValues(alpha: 0.06),
+                color: ok
+                    ? (choisi ? Color.alphaBlend(couleur.withValues(alpha: 0.14), p.surface) : p.surface)
+                    : p.fond,
                 borderRadius: rayon,
-                border: Border.all(
-                  color: quantite > 0 ? couleur : identite.texte.withValues(alpha: 0.08),
-                  width: quantite > 0 ? 2.5 : 1,
-                ),
-                boxShadow: ok
-                    ? [
-                        BoxShadow(
-                          color: identite.nuit.withValues(alpha: 0.06),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
+                border: Border.all(color: choisi ? couleur : p.bordure, width: choisi ? 2 : 1),
+                boxShadow: ok ? AppOmbres.douce(p, force: 0.6) : null,
               ),
               child: ClipRRect(
                 borderRadius: rayon,
-                child: Column(
-                  children: [
-                    Container(height: 6, color: ok ? couleur : identite.texte.withValues(alpha: 0.15)),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(icone, size: 20, color: ok ? couleur : identite.texte.withValues(alpha: 0.3)),
-                            const Spacer(),
-                            Text(
-                              a.nom,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 16,
-                                height: 1.15,
-                                fontWeight: FontWeight.w700,
-                                color: ok ? identite.texte : identite.texte.withValues(alpha: 0.4),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  fcfa(a.prixVente),
-                                  style: TextStyle(
-                                    fontFamily: identite.policeTitres,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: ok ? identite.principale : identite.texte.withValues(alpha: 0.4),
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (!ok)
-                                  Text(
-                                    'Indisponible',
-                                    style: TextStyle(color: identite.erreur, fontWeight: FontWeight.w700, fontSize: 12),
-                                  ),
-                                if (faible)
-                                  Text(
-                                    'reste ${qte(reste)}',
-                                    style: TextStyle(color: couleurOccupee, fontWeight: FontWeight.w800, fontSize: 12),
-                                  ),
-                              ],
-                            ),
-                          ],
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: (ok ? couleur : p.texteDiscret).withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(11),
                         ),
+                        child: Icon(icone, size: 20, color: ok ? couleur : p.texteDiscret),
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+                      Text(
+                        a.nom,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypo.etiquette(ok ? p.texte : p.texteDiscret, taille: 16, poids: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(fcfa(a.prixVente), style: AppTypo.montant(ok ? p.accent : p.texteDiscret, taille: 16)),
+                          const Spacer(),
+                          if (!ok)
+                            Text(
+                              'Indisponible',
+                              style: AppTypo.etiquette(p.erreur, taille: 12, poids: FontWeight.w700),
+                            ),
+                          if (faible)
+                            Text(
+                              'reste ${qte(reste)}',
+                              style: AppTypo.chiffres(AppTypo.etiquette(p.occupee, taille: 12, poids: FontWeight.w800)),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            Positioned(right: -6, top: -8, child: BulleQuantite(quantite)),
+            Positioned(right: -6, top: -8, child: QuantityBadge(quantite, couleur: couleur)),
           ],
         ),
       ),
@@ -388,155 +568,164 @@ class _BoutonArticle extends StatelessWidget {
   }
 }
 
-class _PanneauAddition extends ConsumerWidget {
+// =============================================================== Ticket
+
+class _Ticket extends ConsumerWidget {
   final SessionTable? session;
   final List<ElementPanier> panier;
   final int totalPanier;
   final bool envoi;
+  final ScrollController defilement;
   final VoidCallback onChange;
   final VoidCallback onValider;
-  const _PanneauAddition({
+  const _Ticket({
     required this.session,
     required this.panier,
     required this.totalPanier,
     required this.envoi,
+    required this.defilement,
     required this.onChange,
     required this.onValider,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.pal;
     final s = session;
-    final lignes = s == null ? const <LigneCommande>[] : (ref.watch(lignesProvider(s.id)).value ?? const []);
+    final lignes = s == null
+        ? const <LigneCommande>[]
+        : (ref.watch(lignesProvider(s.id)).value ?? const <LigneCommande>[]);
     final ouverte = s == null || s.statut == StatutSession.ouverte;
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(8),
-            children: [
-              AnimatedSize(
-                duration: duree(context, 250),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: panier.isEmpty
-                    ? const SizedBox(width: double.infinity)
-                    : Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Material(
-                          color: Color.alphaBlend(identite.accent.withValues(alpha: 0.12), identite.surface),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(identite.arrondi),
-                            side: BorderSide(color: identite.accent.withValues(alpha: 0.5)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 10, 4, 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.edit_note_rounded, color: identite.principale),
-                                    const SizedBox(width: 6),
-                                    const Text(
-                                      'Nouveau tour (pas encore envoyé)',
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                                for (final e in panier)
-                                  _LignePanier(key: ObjectKey(e), element: e, panier: panier, onChange: onChange),
-                              ],
+    return Container(
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(identite.arrondi * 1.2),
+        border: Border.all(color: p.bordure),
+        boxShadow: AppOmbres.douce(p),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 14, 6),
+            child: Row(
+              children: [
+                Icon(Icons.receipt_long_rounded, color: p.accent, size: 20),
+                const SizedBox(width: 8),
+                Text('Ticket', style: AppTypo.titre(p.texte, taille: 18, poids: FontWeight.w700)),
+                const Spacer(),
+                if (!ouverte) Pastille('Addition demandée', p.addition),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              controller: defilement,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              children: [
+                // Tours déjà envoyés à la caisse.
+                for (final l in lignes) _LigneValidee(ligne: l, session: s!),
+                // Nouveau tour, en bas, juste au-dessus du bouton Valider.
+                AnimatedSize(
+                  duration: duree(context, 260),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: panier.isEmpty
+                      ? const SizedBox(width: double.infinity)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Material(
+                            color: p.principale.withValues(alpha: 0.10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(identite.arrondi),
+                              side: BorderSide(color: p.principale.withValues(alpha: 0.45)),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 10, 6, 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.edit_note_rounded, color: p.principale),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Nouveau tour · pas encore envoyé',
+                                        style: AppTypo.etiquette(p.texte, taille: 14, poids: FontWeight.w700),
+                                      ),
+                                    ],
+                                  ),
+                                  for (final e in panier)
+                                    _LignePanier(key: ObjectKey(e), element: e, panier: panier, onChange: onChange),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-              ),
-              if (s != null) ...[
-                Row(
-                  children: [
-                    Text(
-                      'Addition · ${s.nbTours} tour${s.nbTours > 1 ? 's' : ''}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    const Spacer(),
-                    if (!ouverte) Pastille('Addition demandée', couleurAddition),
-                  ],
                 ),
-                for (final l in lignes) _LigneValidee(ligne: l, session: s),
+                if (s == null && panier.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+                    child: Column(
+                      children: [
+                        Icon(Icons.touch_app_rounded, size: 40, color: p.texteDiscret),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Touchez un article pour l’ajouter',
+                          textAlign: TextAlign.center,
+                          style: AppTypo.etiquette(p.texteSecondaire, taille: 15),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
-              if (s == null && panier.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('Touchez un article pour l’ajouter', textAlign: TextAlign.center),
-                ),
-            ],
+            ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: identite.surface,
-            border: Border(top: BorderSide(color: identite.texte.withValues(alpha: 0.08))),
-          ),
-          child: Column(
-            children: [
-              if (s != null)
-                Row(
-                  children: [
-                    const Text('Total table', style: TextStyle(fontSize: 18)),
-                    const Spacer(),
-                    MontantAnime(
-                      s.total,
-                      style: TextStyle(
-                        fontFamily: identite.policeTitres,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: identite.principale,
-                      ),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: p.bordure)),
+            ),
+            child: Row(
+              children: [
+                if (s != null && ouverte) ...[
+                  Expanded(
+                    flex: 2,
+                    child: OutlinedButton(
+                      onPressed: panier.isNotEmpty
+                          ? null
+                          : () async {
+                              final ok = await confirmer(
+                                context,
+                                'Demander l’addition',
+                                'La table passera en bleu et la caisse sera prévenue.',
+                              );
+                              if (!ok || !context.mounted) return;
+                              await essayer(
+                                context,
+                                () => ref.read(commandeServiceProvider).demanderAddition(ref.read(acteurProvider)!, s),
+                                succes: 'Addition demandée',
+                              );
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                      child: const Text('Addition', textAlign: TextAlign.center),
                     ),
-                  ],
-                ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (s != null && ouverte)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: panier.isNotEmpty
-                            ? null
-                            : () async {
-                                final ok = await confirmer(
-                                  context,
-                                  'Demander l’addition',
-                                  'La table passera en bleu et la caisse sera prévenue.',
-                                );
-                                if (!ok || !context.mounted) return;
-                                await essayer(
-                                  context,
-                                  () =>
-                                      ref.read(commandeServiceProvider).demanderAddition(ref.read(acteurProvider)!, s),
-                                  succes: 'Addition demandée',
-                                );
-                                if (context.mounted) Navigator.pop(context);
-                              },
-                        child: const Text('Demander l’addition'),
-                      ),
-                    ),
-                  if (s != null && ouverte) const SizedBox(width: 8),
-                  if (ouverte)
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: panier.isEmpty || envoi ? null : onValider,
-                        child: Text(panier.isEmpty ? 'Valider' : 'Valider · ${fcfa(totalPanier)}'),
-                      ),
-                    ),
+                  ),
+                  const SizedBox(width: 10),
                 ],
-              ),
-            ],
+                if (ouverte)
+                  Expanded(
+                    flex: 3,
+                    child: GradientActionButton(
+                      label: panier.isEmpty ? 'Valider' : 'Valider · ${fcfa(totalPanier)}',
+                      icone: Icons.send_rounded,
+                      onPressed: panier.isEmpty || envoi ? null : onValider,
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -549,50 +738,95 @@ class _LignePanier extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.pal;
     final e = element;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(e.article.nom),
-      subtitle: Text(e.note.isEmpty ? fcfa(e.montant) : '« ${e.note} » · ${fcfa(e.montant)}'),
-      onTap: () async {
-        final note = await demanderTexte(
-          context,
-          'Note pour ${e.article.nom}',
-          label: 'ex. bien glacée, sans piment',
-          initial: e.note,
-          obligatoire: false,
-        );
-        if (note != null) {
-          e.note = note;
-          onChange();
-        }
-      },
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton.filledTonal(
-            icon: const Icon(Icons.remove),
-            onPressed: () {
-              e.quantite--;
-              if (e.quantite <= 0) panier.remove(e);
-              onChange();
-            },
+    return StaggeredEntrance(
+      index: 0,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          final note = await demanderTexte(
+            context,
+            'Note pour ${e.article.nom}',
+            label: 'ex. bien glacée, sans piment',
+            initial: e.note,
+            obligatoire: false,
+          );
+          if (note != null) {
+            e.note = note;
+            onChange();
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(e.article.nom, style: AppTypo.etiquette(p.texte, taille: 15)),
+                    Text(
+                      e.note.isEmpty ? fcfa(e.montant) : '« ${e.note} » · ${fcfa(e.montant)}',
+                      style: AppTypo.chiffres(AppTypo.etiquette(p.texteSecondaire, taille: 13, poids: FontWeight.w500)),
+                    ),
+                  ],
+                ),
+              ),
+              _BoutonQuantite(
+                icone: Icons.remove_rounded,
+                label: 'Retirer un ${e.article.nom}',
+                onTap: () {
+                  e.quantite--;
+                  if (e.quantite <= 0) panier.remove(e);
+                  onChange();
+                },
+              ),
+              SizedBox(width: 38, child: RollingNumber(e.quantite, style: AppTypo.montant(p.texte, taille: 20))),
+              _BoutonQuantite(
+                icone: Icons.add_rounded,
+                label: 'Ajouter un ${e.article.nom}',
+                plein: true,
+                onTap: () {
+                  e.quantite++;
+                  onChange();
+                },
+              ),
+            ],
           ),
-          SizedBox(
-            width: 34,
-            child: ChiffreDefilant(
-              e.quantite,
-              style: TextStyle(fontFamily: identite.policeTitres, fontSize: 22, fontWeight: FontWeight.w800),
-            ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BoutonQuantite extends StatelessWidget {
+  final IconData icone;
+  final String label;
+  final bool plein;
+  final VoidCallback onTap;
+  const _BoutonQuantite({required this.icone, required this.label, required this.onTap, this.plein = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: BouncyTapWrapper(
+        scale: 0.88,
+        onTap: onTap,
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: plein ? p.principale : p.surfaceElevee,
+            border: Border.all(color: plein ? Colors.transparent : p.bordure),
           ),
-          IconButton.filledTonal(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              e.quantite++;
-              onChange();
-            },
-          ),
-        ],
+          child: Icon(icone, color: plein ? Colors.white : p.texte),
+        ),
       ),
     );
   }
@@ -605,33 +839,54 @@ class _LigneValidee extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.pal;
     final l = ligne;
-    final style = l.annulee ? const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey) : null;
-    return ListTile(
-      dense: true,
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        radius: 14,
-        backgroundColor: identite.nuit,
-        foregroundColor: identite.accent,
-        child: Text('${l.tour}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-      ),
-      title: Text('${l.quantite} × ${l.nom}${l.offert ? ' (offert)' : ''}', style: style),
-      subtitle: Text(
-        [
-          heure(l.heure),
-          if (l.note.isNotEmpty) '« ${l.note} »',
-          if (l.annulee) 'annulé : ${l.motifAnnulation ?? ''} (validé par ${l.validePar ?? ''})',
-        ].join(' · '),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+    final barre = l.annulee ? TextDecoration.lineThrough : null;
+    final couleurTexte = l.annulee ? p.texteDiscret : p.texte;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
         children: [
-          Text(fcfa(l.montant), style: style),
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: p.surfaceElevee,
+              shape: BoxShape.circle,
+              border: Border.all(color: p.bordure),
+            ),
+            child: Text(
+              '${l.tour}',
+              style: AppTypo.chiffres(AppTypo.etiquette(p.accent, taille: 12, poids: FontWeight.w800)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${l.quantite} × ${l.nom}${l.offert ? ' (offert)' : ''}',
+                  style: AppTypo.etiquette(couleurTexte, taille: 14).copyWith(decoration: barre),
+                ),
+                Text(
+                  [
+                    heure(l.heure),
+                    if (l.note.isNotEmpty) '« ${l.note} »',
+                    if (l.annulee) 'annulé : ${l.motifAnnulation ?? ''} (validé par ${l.validePar ?? ''})',
+                  ].join(' · '),
+                  style: AppTypo.chiffres(AppTypo.etiquette(p.texteDiscret, taille: 12, poids: FontWeight.w500)),
+                ),
+              ],
+            ),
+          ),
+          Text(fcfa(l.montant), style: AppTypo.montant(couleurTexte, taille: 14).copyWith(decoration: barre)),
           if (!l.annulee && l.idFacture == null)
             IconButton(
               tooltip: 'Demander l’annulation',
-              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              icon: Icon(Icons.remove_circle_outline_rounded, color: p.erreur),
               onPressed: () async {
                 final motif = await demanderTexte(
                   context,

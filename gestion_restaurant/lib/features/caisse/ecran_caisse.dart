@@ -9,7 +9,7 @@ import '../../services/impression/impression.dart';
 import '../../services/ticket.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
-import '../../theme/animations.dart';
+import '../../theme/animated_widgets.dart';
 import '../../theme/identite.dart';
 import '../../widgets/commun.dart';
 
@@ -132,11 +132,11 @@ class _TablesOuvertesState extends ConsumerState<_TablesOuvertes> {
                 itemBuilder: (context, i) {
                   final s = triees[i];
                   final couleur = s.statut == StatutSession.ouverte ? couleurOccupee : couleurAddition;
-                  return Apparition(
+                  return StaggeredEntrance(
                     index: i,
                     child: ListTile(
                       selected: s.id == _selection,
-                      leading: Pulsation(
+                      leading: PulseGlow(
                         active: s.statut == StatutSession.addition,
                         couleur: couleur,
                         rayon: BorderRadius.circular(30),
@@ -160,7 +160,7 @@ class _TablesOuvertesState extends ConsumerState<_TablesOuvertes> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          MontantAnime(s.total, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                          SmoothCounterText(s.total, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
                           if (s.statut == StatutSession.addition) Pastille('Addition demandée', couleurAddition),
                           if (s.statut == StatutSession.facturee) Pastille('Facturée', couleurAddition),
                         ],
@@ -328,7 +328,7 @@ class DetailSession extends ConsumerWidget {
         Expanded(
           child: Text(libelle, style: TextStyle(fontSize: gros ? 20 : 15)),
         ),
-        MontantAnime(
+        SmoothCounterText(
           montant,
           style: TextStyle(
             fontFamily: gros ? identite.policeTitres : null,
@@ -617,7 +617,7 @@ class CarteFacture extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      MontantAnime(
+                      SmoothCounterText(
                         monnaie.abs(),
                         style: TextStyle(
                           fontFamily: identite.policeTitres,
@@ -649,7 +649,7 @@ class CarteFacture extends ConsumerWidget {
       () => caisse.encaisser(caissier: ref.read(acteurProvider)!, facture: f, montantRecu: recu, journee: journee!),
     );
     if (monnaie == null || !context.mounted) return;
-    tamponner(context, 'PAYÉE');
+    showStamp(context, 'PAYÉE');
     afficherMessage(context, 'Monnaie à rendre : ${fcfa(monnaie)}');
     final payee = Facture.fromDoc(await ref.read(dbProvider).factures.doc(f.id).get());
     if (context.mounted) await imprimer(context, ticketFacture(resto, payee));
@@ -709,7 +709,7 @@ class CarteFacture extends ConsumerWidget {
       return true;
     });
     if (ok != true || !context.mounted) return;
-    tamponner(context, 'CRÉDIT', couleur: couleurAddition);
+    showStamp(context, 'CRÉDIT', couleur: couleurAddition);
     final f = Facture.fromDoc(await ref.read(dbProvider).factures.doc(facture.id).get());
     if (context.mounted) await imprimer(context, ticketFacture(resto, f));
   }

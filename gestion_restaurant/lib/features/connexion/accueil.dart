@@ -7,7 +7,8 @@ import '../../core/pin.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
 import '../../widgets/barre_etat.dart';
-import '../../theme/animations.dart';
+import '../../theme/animated_widgets.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/identite.dart';
 import '../../theme/motif.dart';
 import '../admin/ecran_admin.dart';
@@ -50,7 +51,7 @@ class _AccueilState extends ConsumerState<Accueil> {
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => _relancer(),
-      child: e == null ? const EcranConnexion() : EspaceEmploye(employe: e),
+      child: e == null ? Theme(data: AppTheme.sombre, child: const EcranConnexion()) : EspaceEmploye(employe: e),
     );
   }
 }
@@ -75,7 +76,7 @@ class EcranConnexion extends ConsumerStatefulWidget {
 }
 
 class _EcranConnexionState extends ConsumerState<EcranConnexion> {
-  final _secousse = GlobalKey<SecousseState>();
+  final _secousse = GlobalKey<ShakeWrapperState>();
   Employe? _choisi;
   String _pin = '';
   String? _erreur;
@@ -153,14 +154,27 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
                             duration: duree(context, 300),
                             child: compactPin
                                 ? const SizedBox.shrink()
-                                : Hero(
-                                    tag: 'logo',
-                                    child: LogoResto(nom: resto?.nom ?? '', taille: _compact ? 84 : 104),
+                                : DecoratedBox(
+                                    // Halo orange chaud derrière le logo.
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      boxShadow: AppOmbres.lueur(identite.principale, force: 1.4),
+                                    ),
+                                    child: Hero(
+                                      tag: 'logo',
+                                      child: LogoResto(
+                                        nom: resto?.nom ?? '',
+                                        taille: identite.logoAsset == null
+                                            ? (_compact ? 84 : 104)
+                                            : (_compact ? 150 : 190),
+                                      ),
+                                    ),
                                   ),
                           ),
                         ),
                         SizedBox(height: compactPin ? 0 : 12),
-                        if (!compactPin)
+                        // Le logo contient déjà le nom : on ne le répète pas.
+                        if (!compactPin && identite.logoAsset == null)
                           Text(
                             resto?.nom ?? '',
                             textAlign: TextAlign.center,
@@ -215,9 +229,9 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
         alignment: WrapAlignment.center,
         children: [
           for (var i = 0; i < actifs.length; i++)
-            Apparition(
+            StaggeredEntrance(
               index: i,
-              child: Pression(
+              child: BouncyTapWrapper(
                 onTap: () => setState(() => _choisi = actifs[i]),
                 child: _CarteEmploye(employe: actifs[i]),
               ),
@@ -244,7 +258,7 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
       ),
       Text('Tapez votre code à 4 chiffres', style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
       const SizedBox(height: 18),
-      Secousse(
+      ShakeWrapper(
         key: _secousse,
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -296,8 +310,8 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
                       button: true,
                       label: c == '⌫' ? 'Effacer' : c,
                       excludeSemantics: true,
-                      child: Pression(
-                        echelle: 0.88,
+                      child: BouncyTapWrapper(
+                        scale: 0.88,
                         onTap: () => _touche(c),
                         child: Container(
                           alignment: Alignment.center,
@@ -349,7 +363,7 @@ Color _couleurRole(Role r) => switch (r) {
   Role.serveuse => identite.principale,
   Role.caissier => identite.tableAddition,
   Role.gestionnaire => identite.tableLibre,
-  Role.admin => identite.accent,
+  Role.admin => Color.lerp(identite.secondaire, Colors.white, 0.18)!,
 };
 
 class _Avatar extends StatelessWidget {

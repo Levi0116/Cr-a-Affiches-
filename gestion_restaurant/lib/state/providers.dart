@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -202,4 +203,16 @@ final portionsProvider = Provider<Map<String, int>>((ref) {
     for (final e in recettes.entries)
       if (articles[e.key]?.aRecette ?? false) e.key: portionsPossibles(e.value, articles),
   };
+});
+
+/// Connexion réseau de l'appareil (Wi-Fi, données mobiles ou câble).
+final reseauProvider = StreamProvider<bool>((ref) async* {
+  final c = Connectivity();
+  bool connecte(List<ConnectivityResult> r) => r.any((x) => x != ConnectivityResult.none);
+  try {
+    yield connecte(await c.checkConnectivity());
+  } catch (_) {
+    yield true; // plateforme sans détection : on suppose connecté
+  }
+  yield* c.onConnectivityChanged.map(connecte);
 });
