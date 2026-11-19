@@ -42,6 +42,12 @@ class RestoDb {
   CollectionReference<Map<String, dynamic>> get categories => col('categories');
   CollectionReference<Map<String, dynamic>> get articles => col('articles');
   CollectionReference<Map<String, dynamic>> get recettes => col('recettes');
+  CollectionReference<Map<String, dynamic>> get appareils => col('appareils');
+  CollectionReference<Map<String, dynamic>> get notifications => col('notifications');
+  CollectionReference<Map<String, dynamic>> get rapportsJour => col('rapportsJour');
+
+  /// Version minimale / dernière version de l'application (hors restaurant).
+  DocumentReference<Map<String, dynamic>> get configVersion => fs.collection('config').doc('version');
   CollectionReference<Map<String, dynamic>> get sessions => col('sessions');
   CollectionReference<Map<String, dynamic>> lignes(String idSession) => sessions.doc(idSession).collection('lignes');
   CollectionReference<Map<String, dynamic>> get factures => col('factures');

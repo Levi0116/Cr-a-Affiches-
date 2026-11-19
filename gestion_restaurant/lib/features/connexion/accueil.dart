@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/pin.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
+import '../../widgets/banniere_version.dart';
 import '../../widgets/barre_etat.dart';
 import '../../theme/animated_widgets.dart';
 import '../../theme/app_theme.dart';
@@ -51,7 +52,14 @@ class _AccueilState extends ConsumerState<Accueil> {
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => _relancer(),
-      child: e == null ? Theme(data: AppTheme.sombre, child: const EcranConnexion()) : EspaceEmploye(employe: e),
+      child: Column(
+        children: [
+          const BanniereVersion(),
+          Expanded(
+            child: e == null ? Theme(data: AppTheme.sombre, child: const EcranConnexion()) : EspaceEmploye(employe: e),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -104,6 +112,9 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
     final ok = hacherPin(idRestaurant: db.idRestaurant, idEmploye: e.id, pin: _pin) == e.pinHash;
     if (ok) {
       ref.read(utilisateurProvider.notifier).connecter(e);
+      // Administrateur : droits serveur temporaires (PIN revérifié côté
+      // serveur), indispensables pour valider depuis l'ordinateur partagé.
+      if (e.role == Role.admin) ref.read(elevationProvider.notifier).demarrer(e, _pin);
     } else {
       _secousse.currentState?.secouer();
       setState(() {

@@ -154,6 +154,17 @@ Future<void> remplirDemo(RestoDb db) async {
     });
     b.update(db.articles.doc(e.key), {'aRecette': true, 'suiviStock': false});
   }
+  // Appareils déjà liés (en production : via Administration → Appareils).
+  final lie = DateTime.now().subtract(const Duration(days: 12));
+  const appareils = [
+    ('ap-caisse', 'Ordinateur de caisse', 'caisse', false),
+    ('ap-tab1', 'Tablette salle', 'tablette', false),
+    ('ap-tab2', 'Tablette terrasse', 'tablette', false),
+    ('ap-tel', 'Téléphone du patron', 'telephone', true),
+  ];
+  for (final (id, nom, type, admin) in appareils) {
+    b.set(db.appareils.doc(id), {'nom': nom, 'type': type, 'admin': admin, 'actif': true, 'lieLe': lie});
+  }
   b.set(db.fournisseurs.doc('f-solibra'), {'nom': 'Solibra', 'telephone': ''});
   b.set(db.fournisseurs.doc('f-brassivoire'), {'nom': 'Brassivoire', 'telephone': ''});
   await b.commit();

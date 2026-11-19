@@ -8,19 +8,20 @@ Application de gestion pour restaurant ou maquis, réalisée d'après le cahier 
 
 ## Avancement
 
-Cette première livraison couvre l'**Étape 1 (MVP)** du cahier des charges (phases 2 à 6), plus une partie des étapes 2 et 3.
+Toutes les phases de réalisation du cahier des charges (2 à 10) sont **développées et testées**. Restent les étapes qui demandent le compte et le matériel du client : création des projets Firebase, mise en ligne, test sur la vraie imprimante et les vraies tablettes, recette signée (voir `DEPLOIEMENT.md` et `RECETTE.md`).
 
 | Phase | Contenu | État |
 |---|---|---|
-| 2 | Projet Flutter Android + Web, organisation `models` / `services` / `features`, Riverpod | ✅ |
-| 3 | Modèles de données (section 7), connexion par PIN haché, déconnexion automatique, changement d'utilisateur rapide, journal d'audit, règles Firestore | ✅ (liaison des appareils par QR code : à faire) |
-| 4 | Administration : catégories, articles (prix, type, unités par casier, seuil, photo), zones et tables, employés (rôle, PIN, désactivation), paramètres | ✅ |
-| 5 | Plan de salle temps réel (vert/orange/bleu), commande (catégories, favoris, panier, notes, articles indisponibles grisés, « reste 3 »), validation en écriture groupée, tours horodatés, demande d'addition, transfert, fusion, demande d'annulation, à emporter, indicateur en ligne / hors ligne | ✅ |
-| 6 | Caisse : tables ouvertes en temps réel avec détail des tours, alerte « addition demandée », pré-addition, facture finale numérotée FAC-AAAA-NNNNNN, encaissement et monnaie, partage par article ou en parts égales, ardoises, duplicata, ouverture et clôture de caisse, stock des boissons | ✅ |
-| 7 | Stock : livraisons en casiers avec coût moyen, pertes, inventaire soumis à validation, portions du jour, disponibilité forcée, historique, **fiches techniques des plats** (déduction des ingrédients, portions possibles), **consignes** (vides à rendre) | ✅ (alertes par notification : à faire) |
-| 8 | Validations admin (annulations, remises, offerts, ajustements), journal d'audit filtrable, avoirs AV-AAAA-NNNNNN | ✅ (notification sur le téléphone : à faire) |
-| 9 | Tableau de bord du jour, dépenses, **rapports jour / semaine / mois** comparés à la période précédente (CA, panier moyen, marge, bénéfice estimé, ventes par heure, par article et catégorie, serveuses, articles non vendus), **export Excel et PDF** | ✅ (Cloud Function `rapportsJour` : à faire) |
-| 10 | Tests automatiques des calculs et d'une soirée simulée | ✅ en partie (tests des règles avec l'émulateur, scénarios hors ligne réels : à faire) |
+| 2 | Projet Flutter Android + Web, organisation `models` / `services` / `features`, Riverpod, Firestore hors ligne | ✅ |
+| 3 | Modèles (section 7), PIN haché, déconnexion automatique, **liaison des appareils par QR code**, **élévation administrateur par PIN vérifié côté serveur**, retrait à distance, règles Firestore, journal d'audit | ✅ |
+| 4 | Administration : menu, articles, zones et tables, employés, **appareils**, paramètres | ✅ |
+| 5 | Plan de salle temps réel, prise de commande, tours, addition, transfert, fusion, annulation, à emporter, indicateur réseau | ✅ |
+| 6 | Caisse : tables ouvertes, ticket, facture numérotée, **pavé d'encaissement**, partage, ardoises, duplicata, **ouverture / clôture par comptage des billets** | ✅ |
+| 7 | Stock complet : livraisons en casiers, coût moyen, pertes, inventaire validé, fiches techniques, consignes, **alertes de stock (Cloud Function + notification)** | ✅ |
+| 8 | Validations (annulations, remises, offerts, ajustements) avec **notification au gérant**, journal d'audit, avoirs | ✅ |
+| 9 | Dépenses, tableau de bord, rapports jour / semaine / mois, export Excel et PDF, **rapport du jour pré-calculé à la clôture** | ✅ |
+| 10 | Tests : 31 tests Flutter (calculs, soirée simulée, **test de charge 3 tablettes × 100 commandes**, fiches techniques, rapports, Hero, encaissement, comptage) + **14 tests serveur sur l'émulateur Firebase** (règles de sécurité, liaison, élévation, blocage, retrait, déclencheurs) | ✅ |
+| 9 (déploiement) | Guide pas à pas, script de création du restaurant, mise à jour proposée dans l'application, sauvegardes quotidiennes, Crashlytics | ✅ (à exécuter chez le client) |
 
 ## Design et identité visuelle
 
@@ -68,28 +69,11 @@ flutter run -d <tablette>      # application des serveuses
 
 > Le mode démonstration s'utilise en mode debug (`flutter run`). En build release, la base en mémoire n'est pas autorisée : on passe alors en mode Firebase.
 
-## Brancher Firebase (phase 2 du cahier des charges)
+## Mise en production avec Firebase
 
-1. Créer les projets `resto-dev` et `resto-prod`, activer Firestore, Authentication, Hosting, Cloud Messaging et Crashlytics, passer en formule Blaze avec une alerte de budget.
-2. `npm install -g firebase-tools` puis `dart pub global activate flutterfire_cli`.
-3. `flutterfire configure` : remplace `lib/firebase_options.dart`.
-4. Lancer avec la vraie base :
+Le guide complet, pas à pas, est dans **`DEPLOIEMENT.md`** : création des projets `resto-dev` et `resto-prod`, `flutterfire configure`, déploiement des règles, des Cloud Functions et de la caisse web, création du restaurant (`npm run creer-restaurant`), liaison des appareils, APK des tablettes, sauvegardes.
 
-```bash
-flutter run -d chrome --dart-define=FIREBASE=true --dart-define=RESTAURANT=<idRestaurant>
-```
-
-5. Déployer (section 9) :
-
-```bash
-firebase use prod
-firebase deploy --only firestore:rules,firestore:indexes
-flutter build web --release --no-web-resources-cdn --dart-define=FIREBASE=true --dart-define=RESTAURANT=<id>
-firebase deploy --only hosting
-flutter build apk --release --dart-define=FIREBASE=true --dart-define=RESTAURANT=<id>
-```
-
-`--no-web-resources-cdn` embarque le moteur d'affichage dans l'application : la caisse se recharge même si internet est coupé.
+En mode Firebase (`--dart-define=FIREBASE=true`), un appareil neuf affiche l'écran **« Lier cet appareil »** : l'administrateur ouvre *Administration → Appareils → Lier un appareil*, un QR code s'affiche (valable 15 minutes, usage unique) ; on le scanne ou on tape les 6 caractères. L'appareil reçoit alors l'accès aux seules données de son restaurant.
 
 ## Impression du ticket (section 4.6)
 
@@ -108,11 +92,12 @@ Pour un PDF à envoyer par WhatsApp, choisir « Enregistrer au format PDF » com
 - Chaque document reçoit un identifiant créé sur l'appareil, l'heure de l'appareil (`heureAppareil`) et l'heure serveur (`creeLe`).
 - Seule la caisse émet les factures : le compteur est lu dans la copie locale et réécrit dans le même lot que la facture, ce qui garde une suite continue même hors ligne. **Il ne faut donc qu'un seul poste de caisse.**
 
-## Points à trancher pour la phase 3
+## Sécurité
 
-- **Liaison des appareils par QR code** : une Cloud Function doit créer le compte Firebase de l'appareil avec le jeton `restaurantId`. Les règles (`firestore.rules`) supposent ce jeton.
-- **Droits administrateur sur l'ordinateur partagé** : les règles réservent les écritures sensibles au jeton `admin`. Le téléphone du gérant peut le recevoir à la liaison, mais l'ordinateur de la caisse est partagé. Il faudra soit faire valider depuis le téléphone du gérant uniquement, soit une Cloud Function qui vérifie le PIN administrateur et exécute l'action. En attendant, dans l'application, ces actions sont bloquées pour tout employé qui n'a pas le rôle administrateur.
-- Les règles n'ont pas encore été testées avec l'émulateur Firebase (phase 10.2).
+- **Liaison des appareils** : Cloud Function `lierAppareil` (code à usage unique), jeton `restaurantId` ; un appareil ne voit que son restaurant.
+- **Droits administrateur** : permanents pour le téléphone du gérant (`admin`) ; sur l'ordinateur partagé, l'administrateur qui se connecte reçoit des droits **temporaires de 15 minutes** (`adminJusqua`) après vérification de son PIN **par le serveur**, renouvelés tant qu'il reste connecté. 5 PIN faux bloquent l'appareil 15 minutes. La pastille « Droits administrateur » en haut de l'administration montre l'état.
+- **Retrait à distance** : *Administration → Appareils → retirer* ; le compte de l'appareil est désactivé et ses jetons révoqués. Un appareil déjà connecté perd l'accès au plus tard à l'expiration de son jeton (1 heure).
+- **Rien n'est supprimé** : règles Firestore testées sur l'émulateur (`functions/test/regles.test.js`).
 
 ## Organisation du code
 
@@ -121,19 +106,23 @@ lib/
   core/        calculs (totaux, remise, TVA, monnaie, parts, casiers, coût moyen, numéros), fiches techniques, rapports, PIN, formats
   theme/       identité visuelle (identite.dart), thème, motif, animations, icônes de catégories
   models/      modèle de données Firestore (section 7)
-  services/    accès Firestore et règles métier : commande, caisse, stock, admin ; ticket 80 mm ; impression ; données de démo
+  services/    accès Firestore et règles métier : commande, caisse, stock, admin ; appareils (Cloud Functions) ;
+               ticket 80 mm ; impression ; export ; données de démo
   state/       providers Riverpod (flux temps réel)
   features/    écrans : connexion, salle, commande, caisse (tables, encaissement, comptage, factures,
                ardoises, journée), stock, admin
   widgets/     éléments communs, indicateur de connexion
 test/          calculs + soirée simulée (commande → facture → encaissement → clôture, annulation, partage, ardoise, stock)
-firestore.rules, firebase.json, .firebaserc
+functions/     Cloud Functions (TypeScript) + tests sur l'émulateur (règles et fonctions)
+firestore.rules, firebase.json, .firebaserc, DEPLOIEMENT.md, RECETTE.md, CHANGELOG.md
 ```
 
 ## Tests
 
 ```bash
-flutter test
+flutter test                 # 31 tests de l’application
+cd functions && npm test     # 14 tests serveur sur l'émulateur Firebase (Java 11+ requis)
 ```
 
-30 tests : calculs de facturation, scénarios complets sur une base Firestore simulée (`fake_cloud_firestore`), fiches techniques, consignes, rapports, export Excel et transition Hero carte de table → en-tête, pavé d'encaissement et comptage de caisse.
+- **Application :** calculs de facturation, soirée simulée, test de charge (3 serveuses, 100 commandes, facturation et clôture au franc près) sur une base Firestore simulée, fiches techniques, consignes, rapports et export Excel, transition Hero, pavé d'encaissement et comptage de caisse.
+- **Serveur :** règles de sécurité (isolement des restaurants, prix réservés à l'administrateur, élévation expirée refusée, factures réglées intouchables, journaux en ajout seul…), liaison des appareils, élévation par PIN, blocage, retrait, alertes de stock, notifications de validation, rapport du jour.

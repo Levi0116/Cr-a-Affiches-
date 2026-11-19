@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/identite.dart';
 import '../../theme/motif.dart';
 import '../../widgets/barre_etat.dart';
+import '../../widgets/panneaux.dart';
 import 'factures_ardoises.dart';
 import 'journee_caisse.dart';
 import 'tables_ouvertes.dart';
@@ -146,21 +147,23 @@ class _EnTeteCaisse extends ConsumerWidget {
                 ),
                 const SizedBox(width: 14),
               ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Caisse', style: AppTypo.titre(p.texte, taille: 26)),
-                    Text(
-                      resto?.nom ?? '',
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypo.etiquette(p.texteSecondaire, taille: 14, poids: FontWeight.w500),
-                    ),
-                  ],
+              if (!avecBarre) const Spacer(),
+              if (avecBarre)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Caisse', style: AppTypo.titre(p.texte, taille: 26)),
+                      Text(
+                        resto?.nom ?? '',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypo.etiquette(p.texteSecondaire, taille: 14, poids: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               if (!etroit) ...[indicateurs, const SizedBox(width: 14)],
-              IndicateurConnexion(compact: etroit),
+              if (avecBarre) IndicateurConnexion(compact: etroit),
               if (avecBarre && e != null) ...[const SizedBox(width: 10), _Utilisateur(nom: e.nom)],
             ],
           ),
@@ -268,8 +271,7 @@ class _Utilisateur extends ConsumerWidget {
 
 // ================================================================ Sections
 
-/// Sélecteur de sections : un indicateur glisse sous l'onglet actif.
-/// Chaque onglet porte un compteur (ardoises, factures à encaisser…).
+/// Sections de la caisse, chacune avec son compteur.
 class _Selecteur extends ConsumerWidget {
   final _Section section;
   final ValueChanged<_Section> onSection;
@@ -277,123 +279,19 @@ class _Selecteur extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p = context.pal;
     final sessions = ref.watch(sessionsEnCoursProvider).value ?? const <SessionTable>[];
     final factures = ref.watch(facturesDepuisProvider(debutJour())).value ?? const <Facture>[];
     final ardoises = (ref.watch(ardoisesProvider).value ?? const <Ardoise>[]).where((a) => a.montantDu > 0).length;
     final journeeOuverte = ref.watch(journeeOuverteProvider).value != null;
-    final items = [
-      (_Section.tables, Icons.table_restaurant_rounded, 'Tables', sessions.length),
-      (_Section.factures, Icons.receipt_long_rounded, 'Factures', factures.length),
-      (_Section.ardoises, Icons.menu_book_rounded, 'Ardoises', ardoises),
-      (_Section.journee, journeeOuverte ? Icons.lock_open_rounded : Icons.lock_rounded, 'Journée', null),
-    ];
-    final index = items.indexWhere((x) => x.$1 == section);
-    return LayoutBuilder(
-      builder: (context, c) {
-        final largeurOnglet = (c.maxWidth.clamp(0, 760) - 14) / items.length;
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: Container(
-            width: largeurOnglet * items.length + 14, // 2 × 6 de marge + 2 × 1 de bordure
-            height: 64,
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: p.surface,
-              borderRadius: BorderRadius.circular(identite.arrondi),
-              border: Border.all(color: p.bordure),
-              boxShadow: AppOmbres.douce(p, force: 0.5),
-            ),
-            child: Stack(
-              children: [
-                AnimatedPositioned(
-                  duration: duree(context, 320),
-                  curve: Curves.easeOutCubic,
-                  left: index * largeurOnglet,
-                  top: 0,
-                  bottom: 0,
-                  width: largeurOnglet,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: degradePrincipal(identite.secondaire),
-                      borderRadius: BorderRadius.circular(identite.arrondi * 0.75),
-                      boxShadow: AppOmbres.lueur(identite.secondaire, force: 0.6),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    for (final (s, icone, nom, compte) in items)
-                      SizedBox(
-                        width: largeurOnglet,
-                        child: Semantics(
-                          container: true,
-                          button: true,
-                          selected: s == section,
-                          label: '$nom${compte == null ? '' : ', $compte'}',
-                          excludeSemantics: true,
-                          child: BouncyTapWrapper(
-                            onTap: () => onSection(s),
-                            child: _Onglet(icone: icone, nom: nom, compte: compte, actif: s == section),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _Onglet extends StatelessWidget {
-  final IconData icone;
-  final String nom;
-  final int? compte;
-  final bool actif;
-  const _Onglet({required this.icone, required this.nom, required this.compte, required this.actif});
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.pal;
-    final c = actif ? Colors.white : p.texteSecondaire;
-    return Center(
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icone, size: 20, color: c),
-              const SizedBox(width: 8),
-              AnimatedDefaultTextStyle(
-                duration: duree(context, 250),
-                style: AppTypo.etiquette(c, taille: 15, poids: FontWeight.w700),
-                child: Text(nom),
-              ),
-              if (compte != null && compte! > 0) ...[
-                const SizedBox(width: 8),
-                AnimatedContainer(
-                  duration: duree(context, 250),
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: actif ? Colors.white.withValues(alpha: 0.22) : p.principale.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: SmoothCounterText.nombre(
-                    compte!,
-                    style: AppTypo.etiquette(actif ? Colors.white : p.principale, taille: 12, poids: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+    return SelecteurSections<_Section>(
+      valeur: section,
+      onChange: onSection,
+      items: [
+        ItemSection(_Section.tables, Icons.table_restaurant_rounded, 'Tables', sessions.length),
+        ItemSection(_Section.factures, Icons.receipt_long_rounded, 'Factures', factures.length),
+        ItemSection(_Section.ardoises, Icons.menu_book_rounded, 'Ardoises', ardoises),
+        ItemSection(_Section.journee, journeeOuverte ? Icons.lock_open_rounded : Icons.lock_rounded, 'Journée'),
+      ],
     );
   }
 }

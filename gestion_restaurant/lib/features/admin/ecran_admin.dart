@@ -6,90 +6,451 @@ import '../../core/format.dart';
 import '../../core/stock_calc.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
-import '../../widgets/barre_etat.dart';
 import '../../theme/animated_widgets.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/identite.dart';
+import '../../theme/motif.dart';
+import '../../widgets/banniere_version.dart';
+import '../../widgets/barre_etat.dart';
+import '../../widgets/cloche_alertes.dart';
 import '../../widgets/commun.dart';
+import '../../widgets/panneaux.dart';
 import '../caisse/ecran_caisse.dart';
 import '../salle/ecran_salle.dart';
 import '../stock/ecran_stock.dart';
+import 'appareils.dart';
 import 'rapports.dart';
 
-/// Espace administrateur (section 3.4) : tout, plus les validations.
+/// ============================================================================
+///  ADMINISTRATION (section 3.4) — ambiance claire « crème Amani »
+/// ============================================================================
+///
+/// Barre latérale groupée (Pilotage, Service, Configuration, Contrôle) avec
+/// compteurs, en-tête avec droits administrateur, alertes et réseau, et
+/// transition douce entre les pages.
 class EcranAdmin extends ConsumerStatefulWidget {
   const EcranAdmin({super.key});
   @override
   ConsumerState<EcranAdmin> createState() => _EcranAdminState();
 }
 
+enum _Page {
+  tableau,
+  validations,
+  rapports,
+  caisse,
+  salle,
+  stock,
+  menu,
+  tables,
+  employes,
+  appareils,
+  parametres,
+  audit,
+}
+
+class _Entree {
+  final _Page page;
+  final String groupe;
+  final IconData icone;
+  final String titre;
+  final int compte;
+  final bool alerte;
+  const _Entree(this.page, this.groupe, this.icone, this.titre, {this.compte = 0, this.alerte = false});
+}
+
 class _EcranAdminState extends ConsumerState<EcranAdmin> {
-  int _index = 0;
+  _Page _page = _Page.tableau;
+
+  Widget _corps(_Page p) => switch (p) {
+    _Page.tableau => _TableauDeBord(onAller: _aller),
+    _Page.validations => const _Validations(),
+    _Page.rapports => const EcranRapports(),
+    _Page.caisse => const EcranCaisse(avecBarre: false),
+    _Page.salle => const EcranSalle(avecBarre: false),
+    _Page.stock => const EcranStock(avecBarre: false),
+    _Page.menu => const _Menu(),
+    _Page.tables => const _Tables(),
+    _Page.employes => const _Employes(),
+    _Page.appareils => const PageAppareils(),
+    _Page.parametres => const _Parametres(),
+    _Page.audit => const _Audit(),
+  };
+
+  void _aller(_Page p) => setState(() => _page = p);
 
   @override
   Widget build(BuildContext context) {
+    final p = context.pal;
     final attente = ref.watch(demandesEnAttenteProvider).value?.length ?? 0;
-    final pages = <(IconData, String, Widget)>[
-      (Icons.dashboard, 'Tableau de bord', const _TableauDeBord()),
-      (Icons.verified, 'Validations${attente > 0 ? ' ($attente)' : ''}', const _Validations()),
-      (Icons.insights_rounded, 'Rapports', const EcranRapports()),
-      (Icons.point_of_sale, 'Caisse', const EcranCaisse(avecBarre: false)),
-      (Icons.table_restaurant, 'Salle', const EcranSalle(avecBarre: false)),
-      (Icons.inventory_2, 'Stock', const EcranStock(avecBarre: false)),
-      (Icons.restaurant_menu, 'Menu', const _Menu()),
-      (Icons.grid_view, 'Tables', const _Tables()),
-      (Icons.people, 'Employés', const _Employes()),
-      (Icons.settings, 'Paramètres', const _Parametres()),
-      (Icons.history, 'Journal d’audit', const _Audit()),
+    final sessions = ref.watch(sessionsEnCoursProvider).value ?? const <SessionTable>[];
+    final aEncaisser = sessions.where((s) => s.statut != StatutSession.ouverte).length;
+    final sousSeuil = (ref.watch(articlesProvider).value ?? const <Article>[])
+        .where((a) => a.actif && a.sousSeuil)
+        .length;
+    final entrees = [
+      const _Entree(_Page.tableau, 'Pilotage', Icons.space_dashboard_rounded, 'Tableau de bord'),
+      _Entree(
+        _Page.validations,
+        'Pilotage',
+        Icons.verified_rounded,
+        'Validations',
+        compte: attente,
+        alerte: attente > 0,
+      ),
+      const _Entree(_Page.rapports, 'Pilotage', Icons.insights_rounded, 'Rapports'),
+      _Entree(
+        _Page.caisse,
+        'Service',
+        Icons.point_of_sale_rounded,
+        'Caisse',
+        compte: aEncaisser,
+        alerte: aEncaisser > 0,
+      ),
+      _Entree(_Page.salle, 'Service', Icons.table_restaurant_rounded, 'Salle', compte: sessions.length),
+      _Entree(_Page.stock, 'Service', Icons.inventory_2_rounded, 'Stock', compte: sousSeuil),
+      const _Entree(_Page.menu, 'Configuration', Icons.restaurant_menu_rounded, 'Menu'),
+      const _Entree(_Page.tables, 'Configuration', Icons.grid_view_rounded, 'Tables et zones'),
+      const _Entree(_Page.employes, 'Configuration', Icons.people_alt_rounded, 'Employés'),
+      const _Entree(_Page.appareils, 'Configuration', Icons.devices_rounded, 'Appareils'),
+      const _Entree(_Page.parametres, 'Configuration', Icons.tune_rounded, 'Paramètres'),
+      const _Entree(_Page.audit, 'Contrôle', Icons.history_rounded, 'Journal d’audit'),
     ];
-    final large = MediaQuery.sizeOf(context).width >= 900;
-    return Scaffold(
-      appBar: barreBraise(title: Text(pages[_index].$2), actions: actionsBarre(context, ref)),
-      drawer: large
-          ? null
-          : Drawer(
-              child: ListView(
-                children: [
-                  for (var i = 0; i < pages.length; i++)
-                    ListTile(
-                      leading: Badge(
-                        isLabelVisible: i == 1 && attente > 0,
-                        label: Text('$attente'),
-                        child: Icon(pages[i].$1),
-                      ),
-                      title: Text(pages[i].$2),
-                      selected: i == _index,
-                      onTap: () {
-                        setState(() => _index = i);
-                        Navigator.pop(context);
-                      },
+    final courante = entrees.firstWhere((e) => e.page == _page);
+    final largeur = MediaQuery.sizeOf(context).width;
+    final mode = largeur >= 1180 ? _ModeNav.large : (largeur >= 820 ? _ModeNav.icones : _ModeNav.tiroir);
+
+    final nav = _BarreLaterale(
+      entrees: entrees,
+      page: _page,
+      mode: mode == _ModeNav.tiroir ? _ModeNav.large : mode,
+      onPage: (pg) {
+        _aller(pg);
+        if (mode == _ModeNav.tiroir) Navigator.of(context).maybePop();
+      },
+    );
+    final corps = Column(
+      children: [
+        _BarreHaut(titre: courante.titre, icone: courante.icone, menu: mode == _ModeNav.tiroir),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: duree(context, 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, a) => FadeTransition(
+              opacity: a,
+              child: SlideTransition(
+                position: Tween(begin: const Offset(0, 0.012), end: Offset.zero).animate(a),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(key: ValueKey(_page), child: _corps(_page)),
+          ),
+        ),
+      ],
+    );
+    return Theme(
+      data: AppTheme.clair,
+      child: Scaffold(
+        backgroundColor: p.fond,
+        drawer: mode == _ModeNav.tiroir ? Drawer(width: 288, child: nav) : null,
+        body: SafeArea(
+          child: mode == _ModeNav.tiroir
+              ? corps
+              : Row(
+                  children: [
+                    nav,
+                    Expanded(child: corps),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _ModeNav { large, icones, tiroir }
+
+class _BarreLaterale extends ConsumerWidget {
+  final List<_Entree> entrees;
+  final _Page page;
+  final _ModeNav mode;
+  final ValueChanged<_Page> onPage;
+  const _BarreLaterale({required this.entrees, required this.page, required this.mode, required this.onPage});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.pal;
+    final large = mode == _ModeNav.large;
+    final resto = ref.watch(restaurantProvider).value;
+    final e = ref.watch(utilisateurProvider);
+    final groupes = <String>[];
+    for (final x in entrees) {
+      if (!groupes.contains(x.groupe)) groupes.add(x.groupe);
+    }
+    return Container(
+      width: large ? 272 : 92,
+      decoration: BoxDecoration(
+        color: p.surface,
+        border: Border(right: BorderSide(color: p.bordure)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(large ? 18 : 14, 18, large ? 18 : 14, 10),
+            child: Row(
+              children: [
+                Hero(
+                  tag: 'logo',
+                  child: LogoResto(nom: resto?.nom ?? '', taille: large ? 52 : 60),
+                ),
+                if (large) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Administration', style: AppTypo.titre(p.texte, taille: 18)),
+                        Text(
+                          resto?.nom ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypo.etiquette(p.texteSecondaire, taille: 12, poids: FontWeight.w500),
+                        ),
+                      ],
                     ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.symmetric(horizontal: large ? 12 : 10, vertical: 6),
+              children: [
+                for (final g in groupes) ...[
+                  if (large)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
+                      child: Text(
+                        g.toUpperCase(),
+                        style: AppTypo.etiquette(
+                          p.texteDiscret,
+                          taille: 11,
+                          poids: FontWeight.w700,
+                        ).copyWith(letterSpacing: 1.2),
+                      ),
+                    )
+                  else
+                    Divider(height: 18, color: p.bordure),
+                  for (final x in entrees.where((x) => x.groupe == g))
+                    _ItemNav(entree: x, actif: x.page == page, large: large, onTap: () => onPage(x.page)),
+                ],
+              ],
+            ),
+          ),
+          if (e != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Semantics(
+                container: true,
+                button: true,
+                label: '${e.nom}, changer d’utilisateur',
+                excludeSemantics: true,
+                child: BouncyTapWrapper(
+                  onTap: () {
+                    Navigator.of(context).popUntil((r) => r.isFirst);
+                    ref.read(utilisateurProvider.notifier).deconnecter();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: p.fond,
+                      borderRadius: BorderRadius.circular(identite.arrondi * 0.8),
+                      border: Border.all(color: p.bordure),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: large ? MainAxisAlignment.start : MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: identite.secondaire,
+                          child: Text(e.nom.characters.first, style: AppTypo.titre(Colors.white, taille: 15)),
+                        ),
+                        if (large) ...[
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(e.nom, style: AppTypo.etiquette(p.texte, taille: 14, poids: FontWeight.w700)),
+                                Text('Changer d’utilisateur', style: AppTypo.etiquette(p.texteSecondaire, taille: 12)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.logout_rounded, size: 18, color: p.texteDiscret),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ItemNav extends StatelessWidget {
+  final _Entree entree;
+  final bool actif;
+  final bool large;
+  final VoidCallback onTap;
+  const _ItemNav({required this.entree, required this.actif, required this.large, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    final x = entree;
+    final c = actif ? Colors.white : p.texteSecondaire;
+    final contenu = AnimatedContainer(
+      duration: duree(context, 260),
+      curve: Curves.easeOutCubic,
+      height: 52,
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: large ? 14 : 0),
+      decoration: BoxDecoration(
+        gradient: actif ? degradePrincipal(identite.secondaire) : null,
+        borderRadius: BorderRadius.circular(identite.arrondi * 0.7),
+        boxShadow: actif ? AppOmbres.lueur(identite.secondaire, force: 0.5) : null,
+      ),
+      child: Row(
+        mainAxisAlignment: large ? MainAxisAlignment.start : MainAxisAlignment.center,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(x.icone, color: c, size: 22),
+              // Mode icônes : petite pastille qui ne masque pas l'icône.
+              if (!large && x.compte > 0)
+                Positioned(
+                  right: -9,
+                  top: -7,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 18),
+                    height: 18,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: x.alerte ? p.occupee : p.principale,
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: actif ? Colors.white : p.surface, width: 1.5),
+                    ),
+                    child: Text(
+                      '${x.compte}',
+                      style: AppTypo.chiffres(
+                        const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (large) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(x.titre, style: AppTypo.etiquette(c, taille: 15, poids: FontWeight.w600)),
+            ),
+            if (x.compte > 0)
+              AnimatedContainer(
+                duration: duree(context, 260),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: actif
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : (x.alerte ? p.occupee.withValues(alpha: 0.15) : p.texte.withValues(alpha: 0.07)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SmoothCounterText.nombre(
+                  x.compte,
+                  style: AppTypo.etiquette(
+                    actif ? Colors.white : (x.alerte ? p.occupee : p.texteSecondaire),
+                    taille: 12,
+                    poids: FontWeight.w800,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+    return Semantics(
+      container: true,
+      button: true,
+      selected: actif,
+      label: '${x.titre}${x.compte > 0 ? ', ${x.compte}' : ''}',
+      excludeSemantics: true,
+      child: Tooltip(
+        message: large ? '' : x.titre,
+        child: BouncyTapWrapper(scale: 0.97, onTap: onTap, child: contenu),
+      ),
+    );
+  }
+}
+
+class _BarreHaut extends StatelessWidget {
+  final String titre;
+  final IconData icone;
+  final bool menu;
+  const _BarreHaut({required this.titre, required this.icone, required this.menu});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    final etroit = MediaQuery.sizeOf(context).width < 640;
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: p.bordure)),
+      ),
+      child: Row(
+        children: [
+          if (menu)
+            IconButton(
+              tooltip: 'Menu',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: Icon(Icons.menu_rounded, color: p.texte),
+            ),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: duree(context, 240),
+              transitionBuilder: (child, a) => FadeTransition(
+                opacity: a,
+                child: SlideTransition(
+                  position: Tween(begin: const Offset(0, 0.3), end: Offset.zero).animate(a),
+                  child: child,
+                ),
+              ),
+              child: Row(
+                key: ValueKey(titre),
+                children: [
+                  Icon(icone, color: p.principale),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(titre, overflow: TextOverflow.ellipsis, style: AppTypo.titre(p.texte, taille: 22)),
+                  ),
                 ],
               ),
             ),
-      body: large
-          ? Row(
-              children: [
-                NavigationRail(
-                  selectedIndex: _index,
-                  labelType: NavigationRailLabelType.all,
-                  onDestinationSelected: (i) => setState(() => _index = i),
-                  destinations: [
-                    for (var i = 0; i < pages.length; i++)
-                      NavigationRailDestination(
-                        icon: Badge(
-                          isLabelVisible: i == 1 && attente > 0,
-                          label: Text('$attente'),
-                          child: Icon(pages[i].$1),
-                        ),
-                        label: Text(pages[i].$2.split(' (').first),
-                      ),
-                  ],
-                ),
-                const VerticalDivider(width: 1),
-                Expanded(child: pages[_index].$3),
-              ],
-            )
-          : pages[_index].$3,
+          ),
+          if (!etroit) ...[const PastilleDroitsAdmin(), const SizedBox(width: 10)],
+          const ClocheAlertes(),
+          const SizedBox(width: 10),
+          IndicateurConnexion(compact: etroit),
+        ],
+      ),
     );
   }
 }
@@ -97,22 +458,30 @@ class _EcranAdminState extends ConsumerState<EcranAdmin> {
 // ----------------------------------------------------------- Tableau de bord
 
 class _TableauDeBord extends ConsumerWidget {
-  const _TableauDeBord();
+  final ValueChanged<_Page> onAller;
+  const _TableauDeBord({required this.onAller});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final factures = ref.watch(facturesDepuisProvider(debutJour())).value ?? const [];
-    final sessions = ref.watch(sessionsEnCoursProvider).value ?? const [];
-    final articles = ref.watch(articlesProvider).value ?? const [];
-    final ardoises = ref.watch(ardoisesProvider).value ?? const [];
-    final demandes = ref.watch(demandesEnAttenteProvider).value ?? const [];
-    final vendues = factures.where((f) => f.statut != StatutFacture.emise).toList();
+    final p = context.pal;
+    final hier = debutJour().subtract(const Duration(days: 1));
+    final factures = ref.watch(facturesDepuisProvider(hier)).value ?? const <Facture>[];
+    final sessions = ref.watch(sessionsEnCoursProvider).value ?? const <SessionTable>[];
+    final articles = ref.watch(articlesProvider).value ?? const <Article>[];
+    final ardoises = ref.watch(ardoisesProvider).value ?? const <Ardoise>[];
+    final demandes = ref.watch(demandesEnAttenteProvider).value ?? const <DemandeValidation>[];
+    final e = ref.watch(utilisateurProvider);
+    final aujourdhui = debutJour();
+    final vendues = factures.where((f) => f.statut != StatutFacture.emise && !f.date.isBefore(aujourdhui)).toList();
+    final veille = factures.where((f) => f.statut != StatutFacture.emise && f.date.isBefore(aujourdhui)).toList();
     final ca = vendues.fold(0, (s, f) => s + f.total);
+    final caHier = veille.fold(0, (s, f) => s + f.total);
     final enCours = sessions.fold(0, (s, x) => s + x.total);
     final ventes = <String, (int, int)>{};
     final parServeuse = <String, int>{};
     for (final f in vendues) {
       parServeuse[f.nomServeuse] = (parServeuse[f.nomServeuse] ?? 0) + f.total;
-      if (f.partie != null && f.partie != '1/${f.partie!.split('/').last}') continue;
+      if (f.partie != null && !f.partie!.startsWith('1/')) continue;
       for (final l in f.lignes.where((l) => !l.annulee)) {
         final (q, m) = ventes[l.nom] ?? (0, 0);
         ventes[l.nom] = (q + l.quantite, m + l.montant);
@@ -120,116 +489,372 @@ class _TableauDeBord extends ConsumerWidget {
     }
     final top = ventes.entries.toList()..sort((a, b) => b.value.$2.compareTo(a.value.$2));
     final sousSeuil = articles.where((a) => a.actif && a.sousSeuil).toList();
+    final h = DateTime.now().hour;
+    final salut = h < 12 ? 'Bonjour' : (h < 18 ? 'Bon après-midi' : 'Bonsoir');
+    final evo = caHier == 0 ? null : (ca - caHier) / caHier * 100;
+    final large = MediaQuery.sizeOf(context).width >= 1180;
+
+    final heros = ClipRRect(
+      borderRadius: BorderRadius.circular(identite.arrondi * 1.2),
+      child: Container(
+        decoration: BoxDecoration(gradient: degradePrincipal(identite.secondaire)),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -30,
+              top: -30,
+              width: 260,
+              height: 260,
+              child: CustomPaint(painter: MotifPainter(couleur: identite.accent, opacite: 0.14)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Wrap(
+                spacing: 32,
+                runSpacing: 18,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.end,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('$salut ${e?.nom ?? ''} 👋', style: AppTypo.titre(Colors.white, taille: 26)),
+                      Text(
+                        dateJourFr(DateTime.now()),
+                        style: AppTypo.etiquette(
+                          Colors.white.withValues(alpha: 0.75),
+                          taille: 14,
+                          poids: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text('Chiffre d’affaires du jour', style: AppTypo.etiquette(identite.accent, taille: 14)),
+                      SmoothCounterText(ca, millisecondes: 900, style: AppTypo.montant(Colors.white, taille: 44)),
+                      Row(
+                        children: [
+                          if (evo != null) ...[
+                            Icon(
+                              evo >= 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                              size: 16,
+                              color: identite.accent,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            evo == null
+                                ? '${vendues.length} facture${vendues.length > 1 ? 's' : ''}'
+                                : '${evo >= 0 ? '+' : ''}${evo.toStringAsFixed(0)} % vs hier · ${vendues.length} facture${vendues.length > 1 ? 's' : ''}',
+                            style: AppTypo.chiffres(
+                              AppTypo.etiquette(Colors.white.withValues(alpha: 0.85), taille: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _BoutonRaccourci(
+                        icone: Icons.insights_rounded,
+                        texte: 'Rapports',
+                        onTap: () => onAller(_Page.rapports),
+                      ),
+                      _BoutonRaccourci(
+                        icone: Icons.restaurant_menu_rounded,
+                        texte: 'Menu',
+                        onTap: () => onAller(_Page.menu),
+                      ),
+                      _BoutonRaccourci(
+                        icone: Icons.devices_rounded,
+                        texte: 'Appareils',
+                        onTap: () => onAller(_Page.appareils),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
 
     var n = 0;
-    Widget tuile(String titre, IconData icone, Widget valeur, {Color? couleur}) {
-      final c = couleur ?? identite.principale;
-      return StaggeredEntrance(
-        index: n++,
-        child: Container(
-          width: 230,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: identite.surface,
-            borderRadius: BorderRadius.circular(identite.arrondi),
-            border: Border.all(color: identite.texte.withValues(alpha: 0.08)),
-            boxShadow: [
-              BoxShadow(color: identite.nuit.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4)),
-            ],
+    final tuiles = Wrap(
+      spacing: 14,
+      runSpacing: 14,
+      children: [
+        _Tuile(
+          index: n++,
+          titre: 'En cours · ${sessions.length} table${sessions.length > 1 ? 's' : ''}',
+          icone: Icons.table_restaurant_rounded,
+          couleur: p.occupee,
+          valeur: SmoothCounterText(enCours, style: AppTypo.montant(p.texte, taille: 22)),
+          onTap: () => onAller(_Page.salle),
+        ),
+        _Tuile(
+          index: n++,
+          titre: 'Validations en attente',
+          icone: Icons.verified_rounded,
+          couleur: demandes.isEmpty ? p.libre : p.addition,
+          alerte: demandes.isNotEmpty,
+          valeur: SmoothCounterText.nombre(demandes.length, style: AppTypo.montant(p.texte, taille: 22)),
+          onTap: () => onAller(_Page.validations),
+        ),
+        _Tuile(
+          index: n++,
+          titre: 'Articles sous le seuil',
+          icone: Icons.warning_amber_rounded,
+          couleur: sousSeuil.isEmpty ? p.libre : p.erreur,
+          alerte: sousSeuil.isNotEmpty,
+          valeur: SmoothCounterText.nombre(sousSeuil.length, style: AppTypo.montant(p.texte, taille: 22)),
+          onTap: () => onAller(_Page.stock),
+        ),
+        _Tuile(
+          index: n++,
+          titre: 'Ardoises en cours',
+          icone: Icons.menu_book_rounded,
+          couleur: p.addition,
+          valeur: SmoothCounterText(
+            ardoises.fold(0, (s, a) => s + a.montantDu),
+            style: AppTypo.montant(p.texte, taille: 22),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(color: c.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
-                child: Icon(icone, color: c),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+          onTap: () => onAller(_Page.caisse),
+        ),
+      ],
+    );
+
+    final maxVente = top.isEmpty ? 1 : top.first.value.$2;
+    final meilleures = PanneauCaisse(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const TitreSection(icone: Icons.local_fire_department_rounded, titre: 'Meilleures ventes du jour'),
+          const SizedBox(height: 12),
+          if (top.isEmpty)
+            Text('Pas encore de vente aujourd’hui.', style: AppTypo.etiquette(p.texteSecondaire, taille: 14)),
+          for (final (i, v) in top.take(6).indexed)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: StaggeredEntrance(
+                index: i,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(titre, style: TextStyle(color: identite.texte.withValues(alpha: 0.6), fontSize: 13)),
-                    DefaultTextStyle.merge(
-                      style: TextStyle(
-                        fontFamily: identite.policeTitres,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: identite.texte,
+                    Row(
+                      children: [
+                        Expanded(child: Text(v.key, style: AppTypo.etiquette(p.texte, taille: 14))),
+                        Text(
+                          '${v.value.$1} × · ',
+                          style: AppTypo.chiffres(AppTypo.etiquette(p.texteDiscret, taille: 13)),
+                        ),
+                        Text(fcfa(v.value.$2), style: AppTypo.montant(p.texte, taille: 14)),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: v.value.$2 / maxVente),
+                      duration: duree(context, 650 + i * 60),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, t, _) => ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: t,
+                          minHeight: 8,
+                          color: p.principale,
+                          backgroundColor: p.texte.withValues(alpha: 0.06),
+                        ),
                       ),
-                      child: valeur,
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final stTitre = TextStyle(
-      fontFamily: identite.policeTitres,
-      fontSize: 22,
-      fontWeight: FontWeight.w800,
-      color: identite.texte,
+            ),
+        ],
+      ),
     );
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            tuile('Chiffre d’affaires du jour', Icons.trending_up_rounded, SmoothCounterText(ca, style: stTitre)),
-            tuile('Factures du jour', Icons.receipt_long_rounded, Text('${vendues.length}'), couleur: identite.accent),
-            tuile(
-              'En cours (${sessions.length} tables)',
-              Icons.table_restaurant_rounded,
-              SmoothCounterText(enCours, style: stTitre),
-              couleur: couleurOccupee,
+    final serveuses = PanneauCaisse(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const TitreSection(icone: Icons.room_service_rounded, titre: 'Ventes par serveuse'),
+          const SizedBox(height: 12),
+          if (parServeuse.isEmpty) Text('—', style: AppTypo.etiquette(p.texteSecondaire, taille: 14)),
+          for (final s in (parServeuse.entries.toList()..sort((a, b) => b.value.compareTo(a.value))))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: p.principale.withValues(alpha: 0.12),
+                    child: Text(s.key.characters.first, style: AppTypo.titre(p.principale, taille: 14)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(s.key, style: AppTypo.etiquette(p.texte, taille: 14))),
+                  Text(fcfa(s.value), style: AppTypo.montant(p.texte, taille: 14)),
+                ],
+              ),
             ),
-            tuile(
-              'Validations en attente',
-              Icons.verified_rounded,
-              Text('${demandes.length}'),
-              couleur: demandes.isEmpty ? couleurLibre : couleurOccupee,
-            ),
-            tuile(
-              'Articles sous le seuil',
-              Icons.warning_amber_rounded,
-              Text('${sousSeuil.length}'),
-              couleur: sousSeuil.isEmpty ? couleurLibre : identite.erreur,
-            ),
-            tuile(
-              'Ardoises en cours',
-              Icons.menu_book_rounded,
-              SmoothCounterText(ardoises.fold(0, (s, a) => s + a.montantDu), style: stTitre),
-              couleur: couleurAddition,
-            ),
+          if (sousSeuil.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const TitreSection(icone: Icons.inventory_2_rounded, titre: 'À réapprovisionner'),
+            const SizedBox(height: 8),
+            for (final a in sousSeuil.take(5))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.circle, size: 9, color: a.stock <= 0 ? p.erreur : p.occupee),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(a.nom, style: AppTypo.etiquette(p.texte, taille: 14))),
+                    Text(
+                      qte(a.stock, a.unite),
+                      style: AppTypo.chiffres(AppTypo.etiquette(p.texteSecondaire, taille: 13)),
+                    ),
+                  ],
+                ),
+              ),
           ],
-        ),
-        const SizedBox(height: 16),
-        Text('Meilleures ventes du jour', style: Theme.of(context).textTheme.titleMedium),
-        if (top.isEmpty) const Text('Pas encore de vente'),
-        for (final e in top.take(10))
-          ListTile(
-            dense: true,
-            title: Text(e.key),
-            subtitle: Text('${e.value.$1} vendu(s)'),
-            trailing: Text(fcfa(e.value.$2)),
-          ),
-        const SizedBox(height: 16),
-        Text('Ventes par serveuse', style: Theme.of(context).textTheme.titleMedium),
-        for (final e in parServeuse.entries) ListTile(dense: true, title: Text(e.key), trailing: Text(fcfa(e.value))),
-        if (sousSeuil.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('Stock sous le seuil', style: Theme.of(context).textTheme.titleMedium),
-          for (final a in sousSeuil)
-            ListTile(dense: true, title: Text(a.nom), trailing: Text('${a.stock} (seuil ${a.seuilAlerte})')),
+        ],
+      ),
+    );
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        StaggeredEntrance(index: 0, child: heros),
+        const SizedBox(height: 18),
+        tuiles,
+        const SizedBox(height: 18),
+        if (large)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: meilleures),
+              const SizedBox(width: 18),
+              Expanded(flex: 2, child: serveuses),
+            ],
+          )
+        else ...[
+          meilleures,
+          const SizedBox(height: 18),
+          serveuses,
         ],
       ],
+    );
+  }
+}
+
+class _BoutonRaccourci extends StatelessWidget {
+  final IconData icone;
+  final String texte;
+  final VoidCallback onTap;
+  const _BoutonRaccourci({required this.icone, required this.texte, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    button: true,
+    label: texte,
+    excludeSemantics: true,
+    child: BouncyTapWrapper(
+      onTap: onTap,
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(identite.arrondi * 0.7),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icone, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Text(texte, style: AppTypo.etiquette(Colors.white, taille: 14, poids: FontWeight.w700)),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _Tuile extends StatelessWidget {
+  final int index;
+  final String titre;
+  final IconData icone;
+  final Color couleur;
+  final Widget valeur;
+  final bool alerte;
+  final VoidCallback onTap;
+  const _Tuile({
+    required this.index,
+    required this.titre,
+    required this.icone,
+    required this.couleur,
+    required this.valeur,
+    required this.onTap,
+    this.alerte = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    final rayon = BorderRadius.circular(identite.arrondi);
+    return StaggeredEntrance(
+      index: index + 1,
+      child: Semantics(
+        container: true,
+        button: true,
+        label: titre,
+        child: PulseGlow(
+          active: alerte,
+          couleur: couleur,
+          rayon: rayon,
+          child: BouncyTapWrapper(
+            scale: 0.97,
+            onTap: onTap,
+            child: Container(
+              width: 250,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: p.surface,
+                borderRadius: rayon,
+                border: Border.all(color: alerte ? couleur.withValues(alpha: 0.5) : p.bordure),
+                boxShadow: AppOmbres.douce(p, force: 0.6),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: couleur.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icone, color: couleur),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(titre, style: AppTypo.etiquette(p.texteSecondaire, taille: 13)),
+                        valeur,
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: p.texteDiscret),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -240,73 +865,195 @@ class _Validations extends ConsumerWidget {
   const _Validations();
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.pal;
     final async = ref.watch(demandesEnAttenteProvider);
-    return async.when(
-      loading: () => const Chargement(),
-      error: (e, _) => Chargement(erreur: e),
-      data: (liste) {
-        if (liste.isEmpty) return const Center(child: Text('Aucune demande en attente'));
-        return ListView(
-          padding: const EdgeInsets.all(12),
+    final elevation = ref.watch(elevationProvider);
+    final maintenant = ref.watch(horlogeProvider).value ?? DateTime.now();
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const EnTetePage(
+          titre: 'Validations',
+          description: 'Annulations, remises, articles offerts et ajustements d’inventaire demandés par l’équipe.',
+        ),
+        if (elevation.statut == StatutElevation.horsLigne || elevation.statut == StatutElevation.refusee)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: PanneauCaisse(
+              couleur: p.occupee.withValues(alpha: 0.08),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: p.occupee),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      elevation.statut == StatutElevation.horsLigne
+                          ? 'Droits administrateur pas encore confirmés par le serveur (hors ligne) : attendez le retour de la connexion avant de valider.'
+                          : 'Droits administrateur refusés par le serveur : ${elevation.message ?? ''}',
+                      style: AppTypo.etiquette(p.texte, taille: 14, poids: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        async.when(
+          loading: () => const Chargement(),
+          error: (e, _) => Chargement(erreur: e),
+          data: (liste) {
+            if (liste.isEmpty) {
+              return PanneauCaisse(
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: p.libre, size: 30),
+                    const SizedBox(width: 12),
+                    Text('Aucune demande en attente', style: AppTypo.etiquette(p.texte, taille: 16)),
+                  ],
+                ),
+              );
+            }
+            return Column(
+              children: [
+                for (final (i, d) in liste.indexed)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: StaggeredEntrance(
+                      key: ValueKey(d.id),
+                      index: i,
+                      child: _CarteDemande(demande: d, maintenant: maintenant),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _CarteDemande extends ConsumerWidget {
+  final DemandeValidation demande;
+  final DateTime maintenant;
+  const _CarteDemande({required this.demande, required this.maintenant});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.pal;
+    final d = demande;
+    final x = d.detail;
+    final (String type, IconData icone, Color c, String titre) = switch (d.type) {
+      TypeValidation.annulation => (
+        'Annulation',
+        Icons.remove_circle_rounded,
+        p.erreur,
+        '${x['quantite']} × ${x['nom']} · table ${x['numeroTable']} · ${fcfa(x['montant'] as num)}',
+      ),
+      TypeValidation.offert => (
+        'Offert',
+        Icons.redeem_rounded,
+        p.principale,
+        '${x['quantite']} × ${x['nom']} · table ${x['numeroTable']}',
+      ),
+      TypeValidation.remise => (
+        'Remise',
+        Icons.percent_rounded,
+        p.addition,
+        '${x['valeur']}${x['typeRemise'] == 'pourcentage' ? ' %' : ' F'} · table ${x['numeroTable']}',
+      ),
+      TypeValidation.ajustement => (
+        'Inventaire',
+        Icons.inventory_rounded,
+        p.occupee,
+        '${x['nom']} · théorique ${qte(x['theorique'] as num)}, compté ${qte(x['compte'] as num)} (écart ${qte(x['ecart'] as num)})',
+      ),
+    };
+    final minutes = maintenant.difference(d.date).inMinutes;
+    return PulseGlow(
+      active: true,
+      couleur: c,
+      rayon: BorderRadius.circular(identite.arrondi * 1.1),
+      periodeMs: 2400,
+      child: PanneauCaisse(
+        child: Wrap(
+          spacing: 16,
+          runSpacing: 14,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            for (final (i, d) in liste.indexed)
-              StaggeredEntrance(
-                index: i,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: c.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icone, color: c),
+                  ),
+                  const SizedBox(width: 14),
+                  Flexible(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_titre(d), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                        Text('Demandé par ${d.demandeur} à ${dateHeure(d.date)}'),
-                        Text('Motif : ${d.motif}'),
-                        const SizedBox(height: 8),
                         Row(
                           children: [
-                            FilledButton.icon(
-                              icon: const Icon(Icons.check),
-                              label: const Text('Valider'),
-                              onPressed: () => essayer(context, () async {
-                                await ref.read(adminServiceProvider).traiterDemande(ref.read(acteurProvider)!, d, true);
-                                if (context.mounted) showSuccessBurst(context, 'Validé');
-                              }),
-                            ),
+                            Pastille(type, c),
                             const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.close),
-                              label: const Text('Refuser'),
-                              onPressed: () => essayer(
-                                context,
-                                () =>
-                                    ref.read(adminServiceProvider).traiterDemande(ref.read(acteurProvider)!, d, false),
-                                succes: 'Refusé',
-                              ),
+                            Text(
+                              '${d.demandeur} · ${minutes < 1 ? 'à l’instant' : 'il y a $minutes min'}',
+                              style: AppTypo.chiffres(AppTypo.etiquette(p.texteSecondaire, taille: 13)),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          titre,
+                          style: AppTypo.chiffres(AppTypo.etiquette(p.texte, taille: 16, poids: FontWeight.w700)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '« ${d.motif} »',
+                          style: AppTypo.etiquette(p.texteSecondaire, taille: 14, poids: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Refuser'),
+                  onPressed: () => essayer(
+                    context,
+                    () => ref.read(adminServiceProvider).traiterDemande(ref.read(acteurProvider)!, d, false),
+                    succes: 'Demande refusée',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GradientActionButton(
+                  label: 'Valider',
+                  icone: Icons.check_rounded,
+                  couleur: p.libre,
+                  onPressed: () => essayer(context, () async {
+                    await ref.read(adminServiceProvider).traiterDemande(ref.read(acteurProvider)!, d, true);
+                    if (context.mounted) showSuccessBurst(context, 'Validé');
+                  }),
+                ),
+              ],
+            ),
           ],
-        );
-      },
+        ),
+      ),
     );
-  }
-
-  String _titre(DemandeValidation d) {
-    final x = d.detail;
-    return switch (d.type) {
-      TypeValidation.annulation =>
-        'Annulation : ${x['quantite']} × ${x['nom']} (${fcfa(x['montant'] as num)}) · table ${x['numeroTable']}',
-      TypeValidation.offert => 'Offert : ${x['quantite']} × ${x['nom']} · table ${x['numeroTable']}',
-      TypeValidation.remise =>
-        'Remise : ${x['valeur']}${x['typeRemise'] == 'pourcentage' ? ' %' : ' F'} · table ${x['numeroTable']}',
-      TypeValidation.ajustement =>
-        'Inventaire : ${x['nom']} · théorique ${x['theorique']}, compté ${x['compte']} (écart ${x['ecart']})',
-    };
   }
 }
 
@@ -320,8 +1067,12 @@ class _Menu extends ConsumerWidget {
     final articles = ref.watch(articlesProvider).value ?? const [];
     final acteur = ref.watch(acteurProvider)!;
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
       children: [
+        const EnTetePage(
+          titre: 'Menu',
+          description: 'Catégories, articles, prix, fiches techniques des plats et consignes.',
+        ),
         Wrap(
           spacing: 8,
           children: [
@@ -659,8 +1410,12 @@ class _Tables extends ConsumerWidget {
     final acteur = ref.watch(acteurProvider)!;
     final svc = ref.read(adminServiceProvider);
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
       children: [
+        const EnTetePage(
+          titre: 'Tables et zones',
+          description: 'Salle, terrasse, VIP… Touchez une table pour la désactiver ou la réactiver.',
+        ),
         Wrap(
           spacing: 8,
           children: [
@@ -741,8 +1496,13 @@ class _Employes extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final employes = ref.watch(employesProvider).value ?? const [];
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
       children: [
+        const EnTetePage(
+          titre: 'Employés',
+          description:
+              'Création des comptes, rôles et codes PIN. Un employé parti est désactivé : son historique reste.',
+        ),
         FilledButton.icon(
           icon: const Icon(Icons.person_add),
           label: const Text('Nouvel employé'),
@@ -856,8 +1616,12 @@ class _ParametresState extends ConsumerState<_Parametres> {
       ),
     );
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       children: [
+        const EnTetePage(
+          titre: 'Paramètres',
+          description: 'Identité du restaurant, mentions du ticket, TVA, déconnexion automatique et dépenses.',
+        ),
         champ('nom', 'Nom du restaurant', r.nom),
         champ('adresse', 'Adresse', r.adresse),
         champ('telephone', 'Téléphone', r.telephone),
@@ -956,6 +1720,14 @@ class _AuditState extends ConsumerState<_Audit> {
             .toList();
         return Column(
           children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: EnTetePage(
+                titre: 'Journal d’audit',
+                description:
+                    'Toutes les actions sensibles, avec leur auteur, l’appareil et l’heure. Rien n’est jamais effacé.',
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(8),
               child: Wrap(
