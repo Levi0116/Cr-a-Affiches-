@@ -2,51 +2,77 @@ rules_version = '2';
 
 // Règles de sécurité (section 6.6 du cahier des charges).
 //
-// Chaque appareil lié reçoit, via une Cloud Function, un compte Firebase
-// portant le jeton personnalisé `restaurantId` (et `admin: true` pour le
-// téléphone du gérant). Un appareil ne lit et n'écrit que les données de
-// SON restaurant. Rien n'est jamais supprimé.
+// Chaque appareil lié reçoit, via la Cloud Function `lierAppareil`, un
+// compte Firebase portant le jeton `restaurantId`. Il ne lit et n'écrit que
+// les données de SON restaurant. Rien n'est jamais supprimé.
 //
-// ⚠ À tester avec l'émulateur Firebase (phase 10.2) avant la production.
+// Droits administrateur :
+// - permanents (`admin: true`) pour le téléphone du gérant ;
+// - temporaires (`adminJusqua`, 15 min) sur l'ordinateur partagé, après
+//   vérification du PIN administrateur par la Cloud Function `elevationAdmin`.
+//
+// Testées avec l'émulateur : functions/test/regles.test.js.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function connecte() { return request.auth != null; }
-    function monResto(rid) { return connecte() && request.auth.token.restaurantId == rid; }
-    function admin(rid) { return monResto(rid) && request.auth.token.admin == true; }
+    function jeton() { return request.auth.token; }
+    function monResto(rid) { return connecte() && jeton().restaurantId == rid; }
+    function admin(rid) {
+      return monResto(rid) && (
+        jeton().get('admin', false) == true ||
+        jeton().get('adminJusqua', 0) > request.time.toMillis() / 1000
+      );
+    }
     function champsModifies() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function seulement(champs) { return champsModifies().hasOnly(champs); }
     function parametrage() {
-      return ['employes', 'zones', 'categories', 'fournisseurs', 'depenses', 'historiquePrix', 'appareils'];
+      return ['employes', 'zones', 'categories', 'fournisseurs', 'depenses', 'historiquePrix', 'recettes'];
     }
     function journaux() {
-      return ['encaissements', 'mouvementsStock', 'journalAudit', 'livraisons'];
+      return ['encaissements', 'mouvementsStock', 'mouvementsConsignes', 'journalAudit', 'livraisons'];
+    }
+
+    // Codes de liaison : uniquement via les Cloud Functions.
+    match /codesLiaison/{code} {
+      allow read, write: if false;
+    }
+
+    // Version minimale de l'application (mise à jour proposée).
+    match /config/{doc} {
+      allow read: if connecte();
+      allow write: if false;
     }
 
     match /restaurants/{rid} {
       allow read: if monResto(rid);
-      allow create, update: if admin(rid);
-      allow delete: if false;
+      allow update: if admin(rid);
+      allow create, delete: if false;
 
       // Collections génériques :
       // - paramétrage : écriture réservée à l'administrateur ;
       // - journaux : ajout seul, jamais modifiés ni supprimés.
       match /{col}/{id} {
-        allow read: if monResto(rid)
-          && (col in parametrage() || col in journaux());
-        allow create: if (col in parametrage() && admin(rid))
-          || (col in journaux() && monResto(rid));
+        allow read: if monResto(rid) && (col in parametrage() || col in journaux());
+        allow create: if (col in parametrage() && admin(rid)) || (col in journaux() && monResto(rid));
         allow update: if col in parametrage() && admin(rid);
         allow delete: if false;
       }
 
+      // Appareils liés : gérés par les Cloud Functions, visibles par l'admin.
+      match /appareils/{uid} {
+        allow read: if admin(rid) || (monResto(rid) && request.auth.uid == uid);
+        allow write: if false;
+      }
+
       // Articles : prix et menu réservés à l'admin ; les autres appareils ne
-      // peuvent toucher qu'au stock, aux ventes, à la disponibilité et au coût.
+      // touchent qu'au stock, aux ventes, aux vides, à la disponibilité et au
+      // coût moyen (livraisons).
       match /articles/{id} {
         allow read: if monResto(rid);
         allow create: if admin(rid);
         allow update: if admin(rid)
-          || (monResto(rid) && seulement(['stock', 'nbVentes', 'disponible', 'coutMoyen', 'seuilAlerte', 'modifieLe', 'modifiePar']));
+          || (monResto(rid) && seulement(['stock', 'nbVentes', 'vides', 'disponible', 'coutMoyen', 'seuilAlerte', 'modifieLe', 'modifiePar']));
         allow delete: if false;
       }
 
@@ -63,15 +89,14 @@ service cloud.firestore {
         allow delete: if false;
         match /lignes/{ligne} {
           allow read, create: if monResto(rid);
-          // Une ligne n'est jamais supprimée. Son annulation (statut,
-          // validePar) passe par une validation de l'administrateur.
-          allow update: if admin(rid)
-            || (monResto(rid) && seulement(['annulationDemandee', 'idFacture']));
+          // Une ligne n'est jamais supprimée ; son annulation (statut,
+          // validePar) passe par l'administrateur.
+          allow update: if admin(rid) || (monResto(rid) && seulement(['annulationDemandee', 'idFacture']));
           allow delete: if false;
         }
       }
 
-      // Factures : une facture payée n'est jamais modifiée (correction par avoir).
+      // Factures : une facture réglée n'est jamais modifiée (correction par avoir).
       match /factures/{id} {
         allow read, create: if monResto(rid);
         allow update: if monResto(rid) && (
@@ -111,6 +136,14 @@ service cloud.firestore {
 
       match /compteurs/{id} {
         allow read, write: if monResto(rid);
+      }
+
+      // Notifications créées par les Cloud Functions ; l'appareil ne peut
+      // que les marquer comme lues.
+      match /notifications/{id} {
+        allow read: if monResto(rid);
+        allow update: if monResto(rid) && seulement(['lue', 'lueLe', 'luePar']);
+        allow create, delete: if false;
       }
 
       match /rapportsJour/{id} {
