@@ -54,14 +54,24 @@ void main() {
     expect(numeroAvoir(2026, 7), 'AV-2026-000007');
   });
 
-  test('PIN haché, salé par employé', () {
-    final a = hacherPin(idRestaurant: 'r', idEmploye: 'e1', pin: '1234');
-    final b = hacherPin(idRestaurant: 'r', idEmploye: 'e2', pin: '1234');
-    expect(a, isNot(contains('1234')));
-    expect(a, isNot(b));
-    expect(pinValide('0123'), isTrue);
-    expect(pinValide('123'), isFalse);
-    expect(pinValide('12a4'), isFalse);
+  test('PIN : 6 à 10 chiffres, codes trop simples refusés', () {
+    expect(pinValide('482615'), isTrue);
+    expect(pinValide('12345'), isFalse);
+    expect(pinValide('123456'), isFalse, reason: 'suite');
+    expect(pinValide('111111'), isFalse, reason: 'identiques');
+    expect(pinValide('121212'), isFalse, reason: 'motif répété');
+    expect(pinValide('12a456'), isFalse);
+    expect(pinValide('12345678901'), isFalse);
+  });
+
+  test('PIN : empreinte PBKDF2 salée identique à celle du serveur Node.js', () async {
+    final v = await hacherPin('482615', sel: 'c2VsZGV0ZXN0', iterations: 1000);
+    expect(v['hash'], 'dhGBVB5qsoJX2cm49Dl+RsrQB9WtHXeHyAmN0bRNu8U=');
+    expect(await pinCorrect('482615', v), isTrue);
+    expect(await pinCorrect('482616', v), isFalse);
+    final a = await hacherPin('482615', iterations: 1000);
+    final b = await hacherPin('482615', iterations: 1000);
+    expect(a['hash'], isNot(b['hash']), reason: 'sel aléatoire');
   });
 
   test('format FCFA', () {

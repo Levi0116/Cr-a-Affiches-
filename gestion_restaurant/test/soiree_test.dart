@@ -1,4 +1,4 @@
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:gestion_restaurant/donnees/base.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gestion_restaurant/core/calculs.dart';
 import 'package:gestion_restaurant/core/stock_calc.dart';
@@ -41,7 +41,7 @@ Future<String> commander(Acteur s, String idTable, Map<String, int> articles, {S
 
 void main() {
   setUp(() async {
-    db = RestoDb(fs: FakeFirebaseFirestore(), idRestaurant: 'demo', appareil: 'test');
+    db = RestoDb(fs: BaseLocale.autonome(), idRestaurant: 'demo', appareil: 'test');
     await remplirDemo(db);
     cmd = CommandeService(db);
     caisse = CaisseService(db);

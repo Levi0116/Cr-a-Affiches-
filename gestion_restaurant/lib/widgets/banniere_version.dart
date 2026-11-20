@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/modeles.dart';
 import '../services/plateforme/plateforme.dart';
 import '../state/providers.dart';
 import '../theme/animated_widgets.dart';
@@ -83,21 +84,16 @@ class PastilleDroitsAdmin extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.pal;
-    final e = ref.watch(elevationProvider);
-    final (String txt, Color c, IconData i) = switch (e.statut) {
-      StatutElevation.active => ('Droits administrateur', p.libre, Icons.verified_user_rounded),
-      StatutElevation.enCours => ('Vérification…', p.addition, Icons.hourglass_top_rounded),
-      StatutElevation.horsLigne => ('Droits en attente de réseau', p.occupee, Icons.cloud_off_rounded),
-      StatutElevation.refusee => ('Droits refusés', p.erreur, Icons.gpp_bad_rounded),
-      StatutElevation.inutile => ('', p.texte, Icons.check),
-    };
-    if (e.statut == StatutElevation.inutile) return const SizedBox.shrink();
+    final e = ref.watch(utilisateurProvider);
+    if (e == null || e.role != Role.admin) return const SizedBox.shrink();
+    final actif = ref.watch(droitsAdminProvider);
+    final (String txt, Color c, IconData i) = actif
+        ? ('Droits administrateur', p.libre, Icons.verified_user_rounded)
+        : ('Hors ligne : consultation seule', p.occupee, Icons.cloud_off_rounded);
     return Tooltip(
-      message:
-          e.message ??
-          (e.jusqua == null
-              ? txt
-              : '$txt jusqu’à ${TimeOfDay.fromDateTime(e.jusqua!).format(context)} (renouvelés automatiquement)'),
+      message: actif
+          ? 'Code vérifié par le serveur : vous pouvez gérer les comptes, le menu et les validations.'
+          : 'Connecté sans internet : reconnectez-vous en ligne pour les actions d’administration.',
       child: AnimatedContainer(
         duration: duree(context, 300),
         height: 40,

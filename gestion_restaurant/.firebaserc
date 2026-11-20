@@ -1,6 +1,0 @@
-{
-  "projects": {
-    "dev": "resto-dev",
-    "prod": "resto-prod"
-  }
-}

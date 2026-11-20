@@ -1,36 +1,23 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 import '../core/pin.dart';
+import '../donnees/api.dart';
+import '../donnees/base.dart';
+import '../models/modeles.dart';
 import 'db.dart';
-
-/// État de liaison de cet appareil (jetons du compte Firebase).
-class EtatAppareil {
-  final String uid;
-  final String? restaurantId;
-  final bool admin;
-  final DateTime? adminJusqua;
-  const EtatAppareil({required this.uid, this.restaurantId, this.admin = false, this.adminJusqua});
-
-  bool get lie => restaurantId != null;
-  bool get adminActif => admin || (adminJusqua?.isAfter(DateTime.now()) ?? false);
-}
 
 /// Code de liaison à usage unique, affiché en QR code (valable 15 minutes).
 class CodeLiaison {
   final String code;
   final DateTime expire;
-  final String restaurantId;
-  const CodeLiaison({required this.code, required this.expire, required this.restaurantId});
+  const CodeLiaison({required this.code, required this.expire});
 
-  /// Contenu du QR code : préfixe + code (le restaurant est déduit côté serveur).
+  /// Contenu du QR code.
   String get contenuQr => 'AMANI-LIAISON:$code';
 
   static String? lireQr(String brut) {
-    final m = RegExp(r'([A-Z2-9]{6})$').firstMatch(brut.trim().toUpperCase());
+    final m = RegExp(r'([A-Z2-9]{8})$').firstMatch(brut.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9:]'), ''));
     return m?.group(1);
   }
 }
@@ -44,147 +31,229 @@ enum TypeAppareil {
   const TypeAppareil(this.libelle);
 }
 
-/// Opérations de sécurité qui passent par le serveur (Cloud Functions).
-abstract class ServeurAppareils {
-  Future<EtatAppareil> etat({bool rafraichir = false});
-  Future<EtatAppareil> lier(String code);
-  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false});
+/// Résultat d'une connexion par code PIN.
+class Connexion {
+  final Employe employe;
 
-  /// Droits administrateur temporaires après vérification du PIN côté serveur.
-  Future<DateTime> elevationAdmin({required String idEmploye, required String pin});
-  Future<void> finElevation();
-  Future<void> revoquer(String uid);
+  /// Vrai si le serveur a vérifié le code (session ouverte en ligne).
+  final bool enLigne;
+  const Connexion(this.employe, {required this.enLigne});
 }
 
-// ============================================================ Firebase
+/// Opérations de sécurité : connexion des employés, comptes (réservés à
+/// l'administrateur), liaison et retrait des appareils.
+abstract class ServeurAppareils {
+  /// Téléphone du gérant : droits administrateur permanents.
+  bool get appareilAdmin;
 
-/// Implémentation réelle : compte anonyme Firebase + Cloud Functions.
-class ServeurFirebase implements ServeurAppareils {
-  final FirebaseAuth auth;
-  final FirebaseFunctions fonctions;
-  ServeurFirebase({FirebaseAuth? auth, FirebaseFunctions? fonctions, String region = 'europe-west1'})
-    : auth = auth ?? FirebaseAuth.instance,
-      fonctions = fonctions ?? FirebaseFunctions.instanceFor(region: region);
+  /// Droits administrateur utilisables maintenant (session vérifiée en ligne
+  /// ou téléphone du gérant).
+  bool droitsAdmin(Employe? e);
 
-  Future<User> _utilisateur() async => auth.currentUser ?? (await auth.signInAnonymously()).user!;
+  Future<Connexion> connecter(Employe e, String pin);
+  void deconnecter();
+
+  Future<void> creerEmploye({required String nom, required Role role, required String pin});
+  Future<void> modifierEmploye(String id, {String? nom, Role? role, bool? actif, String? pin});
+  Future<void> supprimerEmploye(String id);
+
+  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false});
+  Future<void> revoquer(String idAppareil);
+}
+
+String _texte(Object e) => e is ErreurApi ? e.message : '$e';
+
+// ============================================================ Serveur Node.js
+
+class ServeurApi implements ServeurAppareils {
+  final Api api;
+  final BaseLocale base;
+  @override
+  final bool appareilAdmin;
+  bool _sessionEnLigne = false;
+  ServeurApi({required this.api, required this.base, required this.appareilAdmin});
 
   @override
-  Future<EtatAppareil> etat({bool rafraichir = false}) async {
-    final u = await _utilisateur();
-    final r = await u.getIdTokenResult(rafraichir);
-    final c = r.claims ?? const {};
-    final jusqua = c['adminJusqua'];
-    return EtatAppareil(
-      uid: u.uid,
-      restaurantId: c['restaurantId'] as String?,
-      admin: c['admin'] == true,
-      adminJusqua: jusqua is num ? DateTime.fromMillisecondsSinceEpoch((jusqua * 1000).round()) : null,
-    );
+  bool droitsAdmin(Employe? e) => e?.role == Role.admin && (appareilAdmin || _sessionEnLigne);
+
+  @override
+  Future<Connexion> connecter(Employe e, String pin) async {
+    try {
+      final r = await api.connexion(e.id, pin).timeout(const Duration(seconds: 10));
+      api.session = r['session'] as String;
+      base
+        ..auteur = e.id
+        ..session = api.session;
+      _sessionEnLigne = true;
+      return Connexion(e, enLigne: true);
+    } on ErreurApi catch (err) {
+      if (!err.horsLigne) throw ErreurMetier(err.message);
+    } on TimeoutException {
+      // serveur injoignable : vérification locale ci-dessous
+    }
+    // Hors ligne : vérification sur l'appareil (empreinte salée).
+    if (!await pinCorrect(pin, e.pinVerif)) throw ErreurMetier('Code incorrect');
+    api.session = null;
+    base
+      ..auteur = e.id
+      ..session = null;
+    _sessionEnLigne = false;
+    return Connexion(e, enLigne: false);
   }
 
-  Future<Map<String, dynamic>> _appeler(String nom, Map<String, dynamic> donnees) async {
-    await _utilisateur();
+  @override
+  void deconnecter() {
+    api.session = null;
+    base
+      ..auteur = null
+      ..session = null;
+    _sessionEnLigne = false;
+  }
+
+  Future<T> _admin<T>(Future<T> Function() f) async {
+    if (!_sessionEnLigne) throw ErreurMetier('Action réservée à l’administrateur connecté en ligne : vérifiez internet puis reconnectez-vous.');
     try {
-      final r = await fonctions.httpsCallable(nom).call<Object?>(donnees);
-      return Map<String, dynamic>.from((r.data as Map?) ?? const {});
-    } on FirebaseFunctionsException catch (e) {
-      throw ErreurMetier(e.message ?? 'Erreur du serveur (${e.code})');
+      return await f();
+    } on ErreurApi catch (e) {
+      throw ErreurMetier(_texte(e));
     }
   }
 
   @override
-  Future<EtatAppareil> lier(String code) async {
-    await _appeler('lierAppareil', {'code': code});
-    return etat(rafraichir: true);
+  Future<void> creerEmploye({required String nom, required Role role, required String pin}) {
+    final e = verifierFormatPin(pin);
+    if (e != null) throw ErreurMetier(e);
+    return _admin(() => api.creerEmploye(nom: nom.trim(), role: role.name, pin: pin));
   }
 
   @override
-  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false}) async {
-    final r = await _appeler('creerCodeLiaison', {'nom': nom, 'type': type.name, 'admin': admin});
-    return CodeLiaison(
-      code: r['code'] as String,
-      expire: DateTime.fromMillisecondsSinceEpoch((r['expire'] as num).toInt()),
-      restaurantId: r['restaurantId'] as String,
+  Future<void> modifierEmploye(String id, {String? nom, Role? role, bool? actif, String? pin}) {
+    if (pin != null) {
+      final e = verifierFormatPin(pin);
+      if (e != null) throw ErreurMetier(e);
+    }
+    return _admin(
+      () => api.modifierEmploye(id, {
+        if (nom != null) 'nom': nom.trim(),
+        if (role != null) 'role': role.name,
+        if (actif != null) 'actif': actif,
+        if (pin != null) 'pin': pin,
+      }),
     );
   }
 
   @override
-  Future<DateTime> elevationAdmin({required String idEmploye, required String pin}) async {
-    final r = await _appeler('elevationAdmin', {'idEmploye': idEmploye, 'pin': pin});
-    await etat(rafraichir: true); // les règles Firestore voient le nouveau jeton
-    return DateTime.fromMillisecondsSinceEpoch((r['jusqua'] as num).toInt());
-  }
+  Future<void> supprimerEmploye(String id) => _admin(() => api.supprimerEmploye(id));
 
   @override
-  Future<void> finElevation() async {
-    await _appeler('finElevationAdmin', const {});
-    await etat(rafraichir: true);
-  }
+  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false}) => _admin(() async {
+    final r = await api.creerCodeLiaison(type: type.name, nom: nom.trim(), admin: admin);
+    return CodeLiaison(code: r['code'] as String, expire: DateTime.parse(r['expire'] as String).toLocal());
+  });
 
   @override
-  Future<void> revoquer(String uid) => _appeler('revoquerAppareil', {'uid': uid});
+  Future<void> revoquer(String idAppareil) => _admin(() => api.retirerAppareil(idAppareil));
 }
 
 // ======================================================= Démonstration
 
-/// Mode démonstration : même comportement, simulé sur la base en mémoire.
+/// Mode démonstration (sans serveur) : mêmes règles, simulées sur la base locale.
 class ServeurDemo implements ServeurAppareils {
   final RestoDb db;
-  final _codes = <String, CodeLiaison>{};
   ServeurDemo(this.db);
 
   static const _alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   @override
-  Future<EtatAppareil> etat({bool rafraichir = false}) async =>
-      EtatAppareil(uid: 'appareil-demo', restaurantId: db.idRestaurant, admin: true);
+  bool get appareilAdmin => false;
 
   @override
-  Future<EtatAppareil> lier(String code) async {
-    final c = _codes.remove(code.toUpperCase());
-    if (c == null) throw ErreurMetier('Code inconnu.');
-    if (c.expire.isBefore(DateTime.now())) throw ErreurMetier('Ce code a expiré.');
-    return etat();
+  bool droitsAdmin(Employe? e) => e?.role == Role.admin;
+
+  @override
+  Future<Connexion> connecter(Employe e, String pin) async {
+    if (!await pinCorrect(pin, e.pinVerif)) throw ErreurMetier('Code incorrect');
+    db.fs.auteur = e.id;
+    return Connexion(e, enLigne: true);
+  }
+
+  @override
+  void deconnecter() => db.fs.auteur = null;
+
+  Future<List<Employe>> _actifs() async =>
+      (await db.employes.get()).docs.map(Employe.fromDoc).where((e) => !e.supprime).toList();
+
+  Future<void> _pinLibre(String pin, [String? sauf]) async {
+    for (final e in await _actifs()) {
+      if (e.id != sauf && await pinCorrect(pin, e.pinVerif)) throw ErreurMetier('Ce code est déjà utilisé par un autre employé.');
+    }
+  }
+
+  Future<void> _resteUnAdmin(String sauf) async {
+    if (!(await _actifs()).any((e) => e.id != sauf && e.role == Role.admin && e.actif)) {
+      throw ErreurMetier('Il doit toujours rester au moins un administrateur actif.');
+    }
+  }
+
+  @override
+  Future<void> creerEmploye({required String nom, required Role role, required String pin}) async {
+    final err = verifierFormatPin(pin);
+    if (err != null) throw ErreurMetier(err);
+    if (nom.trim().length < 2) throw ErreurMetier('Nom trop court.');
+    await _pinLibre(pin);
+    await db.employes.doc(db.nouvelId()).set({
+      'nom': nom.trim(),
+      'role': role.name,
+      'actif': true,
+      'supprime': false,
+      'pinVerif': await hacherPin(pin),
+      'creeLe': Timestamp.now(),
+    });
+  }
+
+  @override
+  Future<void> modifierEmploye(String id, {String? nom, Role? role, bool? actif, String? pin}) async {
+    final avant = Employe.fromDoc(await db.employes.doc(id).get());
+    if (pin != null) {
+      final err = verifierFormatPin(pin);
+      if (err != null) throw ErreurMetier(err);
+      await _pinLibre(pin, id);
+    }
+    if (avant.role == Role.admin && ((role != null && role != Role.admin) || actif == false)) await _resteUnAdmin(id);
+    await db.employes.doc(id).set({
+      if (nom != null) 'nom': nom.trim(),
+      if (role != null) 'role': role.name,
+      if (actif != null) 'actif': actif,
+      if (pin != null) 'pinVerif': await hacherPin(pin),
+      'modifieLe': Timestamp.now(),
+    }, const SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> supprimerEmploye(String id) async {
+    if (id == db.fs.auteur) throw ErreurMetier('Vous ne pouvez pas supprimer votre propre compte.');
+    final e = Employe.fromDoc(await db.employes.doc(id).get());
+    if (e.role == Role.admin) await _resteUnAdmin(id);
+    await db.employes.doc(id).set({'actif': false, 'supprime': true, 'pinVerif': null}, const SetOptions(merge: true));
   }
 
   @override
   Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false}) async {
     if (nom.trim().isEmpty) throw ErreurMetier('Donnez un nom à l’appareil.');
     final r = Random.secure();
-    final code = List.generate(6, (_) => _alphabet[r.nextInt(_alphabet.length)]).join();
-    final c = CodeLiaison(
-      code: code,
-      expire: DateTime.now().add(const Duration(minutes: 15)),
-      restaurantId: db.idRestaurant,
-    );
-    _codes[code] = c;
-    // En démonstration, l'appareil est « lié » aussitôt pour peupler la liste.
+    final code = List.generate(8, (_) => _alphabet[r.nextInt(_alphabet.length)]).join();
+    // En démonstration, l'appareil apparaît aussitôt dans la liste.
     await db.appareils.doc('demo-${code.toLowerCase()}').set({
       'nom': nom.trim(),
       'type': type.name,
       'admin': admin && type == TypeAppareil.telephone,
-      'actif': true,
-      'lieLe': DateTime.now(),
+      'revoque': false,
+      'lieLe': Timestamp.now(),
     });
-    return c;
+    return CodeLiaison(code: code, expire: DateTime.now().add(const Duration(minutes: 15)));
   }
 
   @override
-  Future<DateTime> elevationAdmin({required String idEmploye, required String pin}) async {
-    final e = (await db.employes.doc(idEmploye).get()).data();
-    final ok =
-        e != null &&
-        e['role'] == 'admin' &&
-        e['pinHash'] == hacherPin(idRestaurant: db.idRestaurant, idEmploye: idEmploye, pin: pin);
-    if (!ok) throw ErreurMetier('Code incorrect.');
-    return DateTime.now().add(const Duration(minutes: 15));
-  }
-
-  @override
-  Future<void> finElevation() async {}
-
-  @override
-  Future<void> revoquer(String uid) async {
-    await db.appareils.doc(uid).update({'actif': false, 'retireLe': DateTime.now()});
-  }
+  Future<void> revoquer(String idAppareil) =>
+      db.appareils.doc(idAppareil).set({'revoque': true, 'revoqueLe': Timestamp.now()}, const SetOptions(merge: true));
 }

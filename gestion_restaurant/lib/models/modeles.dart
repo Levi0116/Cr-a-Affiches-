@@ -3,7 +3,7 @@
 /// Toutes les collections sont rangées sous `restaurants/{idRestaurant}/...`.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../donnees/base.dart';
 
 import '../core/calculs.dart';
 
@@ -85,18 +85,30 @@ class Employe {
   final String id;
   final String nom;
   final Role role;
-  final String pinHash;
+
+  /// Empreinte salée du code PIN (vérification hors ligne) ; null si supprimé.
+  final Map<String, dynamic>? pinVerif;
   final bool actif;
-  const Employe({required this.id, required this.nom, required this.role, required this.pinHash, this.actif = true});
+  final bool supprime;
+  const Employe({
+    required this.id,
+    required this.nom,
+    required this.role,
+    this.pinVerif,
+    this.actif = true,
+    this.supprime = false,
+  });
 
   factory Employe.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data()!;
+    final v = m['pinVerif'];
     return Employe(
       id: d.id,
-      nom: m['nom'] as String,
-      role: Role.values.byName(m['role'] as String),
-      pinHash: m['pinHash'] as String? ?? '',
+      nom: m['nom'] as String? ?? '—',
+      role: Role.values.asNameMap()[m['role']] ?? Role.serveuse,
+      pinVerif: v is Map ? Map<String, dynamic>.from(v) : null,
       actif: m['actif'] as bool? ?? true,
+      supprime: m['supprime'] as bool? ?? false,
     );
   }
 }

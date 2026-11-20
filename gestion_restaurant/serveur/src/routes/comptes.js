@@ -15,7 +15,7 @@ import {
 import { ecrireServeur } from '../sync.js';
 import { horodatage } from '../valeurs.js';
 
-const ROLES = ['serveuse', 'caissier', 'stock', 'admin'];
+const ROLES = ['serveuse', 'caissier', 'gestionnaire', 'admin'];
 const TYPES = ['tablette', 'caisse', 'telephone'];
 const texte = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 

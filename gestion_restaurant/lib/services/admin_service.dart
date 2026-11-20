@@ -1,6 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../donnees/base.dart';
 
-import '../core/pin.dart';
 import '../models/modeles.dart';
 import 'db.dart';
 
@@ -11,6 +10,9 @@ class AdminService {
 
   void _exigerAdmin(Acteur a) {
     if (!a.estAdmin) throw ErreurMetier('Réservé à l’administrateur');
+    if (!db.adminConfirme()) {
+      throw ErreurMetier('Connecté hors ligne : reconnectez-vous quand internet est revenu pour cette action.');
+    }
   }
 
   // ------------------------------------------------------------ Validations
@@ -243,41 +245,7 @@ class AdminService {
     await db.envoyerSansBloquer(b);
   }
 
-  // -------------------------------------------------------------- Employés
-
-  Future<void> enregistrerEmploye(
-    Acteur a, {
-    String? id,
-    required String nom,
-    required Role role,
-    String? nouveauPin,
-    bool actif = true,
-  }) async {
-    _exigerAdmin(a);
-    if (nom.trim().isEmpty) throw ErreurMetier('Nom obligatoire');
-    if (id == null && nouveauPin == null) {
-      throw ErreurMetier('Code PIN obligatoire');
-    }
-    if (nouveauPin != null && !pinValide(nouveauPin)) {
-      throw ErreurMetier('Le code PIN doit comporter 4 chiffres');
-    }
-    final idE = id ?? db.nouvelId();
-    final b = db.fs.batch();
-    b.set(db.employes.doc(idE), {
-      'nom': nom.trim(),
-      'role': role.name,
-      'actif': actif,
-      if (nouveauPin != null) 'pinHash': hacherPin(idRestaurant: db.idRestaurant, idEmploye: idE, pin: nouveauPin),
-      ...db.modif(a),
-    }, SetOptions(merge: true));
-    db.audit(
-      b,
-      a,
-      id == null ? 'creation_employe' : 'modification_employe',
-      '$nom (${role.libelle})${actif ? '' : ' désactivé'}',
-    );
-    await db.envoyerSansBloquer(b);
-  }
+  // Comptes employés : uniquement par le serveur (ServeurAppareils), jamais par la synchronisation.
 
   // ------------------------------------------------------------- Paramètres
 

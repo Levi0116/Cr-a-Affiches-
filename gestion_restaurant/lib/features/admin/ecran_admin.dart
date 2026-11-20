@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/format.dart';
 import '../../core/stock_calc.dart';
+import '../../core/pin.dart';
 import '../../models/modeles.dart';
 import '../../state/providers.dart';
 import '../../theme/animated_widgets.dart';
@@ -867,7 +868,7 @@ class _Validations extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.pal;
     final async = ref.watch(demandesEnAttenteProvider);
-    final elevation = ref.watch(elevationProvider);
+    final droits = ref.watch(droitsAdminProvider);
     final maintenant = ref.watch(horlogeProvider).value ?? DateTime.now();
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -876,7 +877,7 @@ class _Validations extends ConsumerWidget {
           titre: 'Validations',
           description: 'Annulations, remises, articles offerts et ajustements d’inventaire demandés par l’équipe.',
         ),
-        if (elevation.statut == StatutElevation.horsLigne || elevation.statut == StatutElevation.refusee)
+        if (!droits)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: PanneauCaisse(
@@ -887,9 +888,7 @@ class _Validations extends ConsumerWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      elevation.statut == StatutElevation.horsLigne
-                          ? 'Droits administrateur pas encore confirmés par le serveur (hors ligne) : attendez le retour de la connexion avant de valider.'
-                          : 'Droits administrateur refusés par le serveur : ${elevation.message ?? ''}',
+                      'Connecté hors ligne : pour valider, reconnectez-vous quand internet est revenu (le serveur doit vérifier votre code).',
                       style: AppTypo.etiquette(p.texte, taille: 14, poids: FontWeight.w500),
                     ),
                   ),
@@ -1490,99 +1489,192 @@ class _Tables extends ConsumerWidget {
 
 // ------------------------------------------------------------------ Employés
 
+/// Comptes de l'équipe : seul l'administrateur connecté en ligne peut
+/// créer, modifier ou supprimer un compte (vérifié par le serveur).
 class _Employes extends ConsumerWidget {
   const _Employes();
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.pal;
     final employes = ref.watch(employesProvider).value ?? const [];
+    final droits = ref.watch(droitsAdminProvider);
+    final moi = ref.watch(utilisateurProvider);
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         const EnTetePage(
-          titre: 'Employés',
+          titre: 'Comptes de l’équipe',
           description:
-              'Création des comptes, rôles et codes PIN. Un employé parti est désactivé : son historique reste.',
+              'Vous seul créez, modifiez ou supprimez les comptes. Chaque employé a un code personnel de 6 à 10 chiffres.',
         ),
-        FilledButton.icon(
-          icon: const Icon(Icons.person_add),
-          label: const Text('Nouvel employé'),
-          onPressed: () => _editer(context, ref, null),
+        if (!droits)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: PanneauCaisse(
+              couleur: p.occupee.withValues(alpha: 0.08),
+              child: Row(
+                children: [
+                  Icon(Icons.cloud_off_rounded, color: p.occupee),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Gestion des comptes indisponible hors ligne : reconnectez-vous quand internet est revenu.',
+                      style: AppTypo.etiquette(p.texte, taille: 14, poids: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.person_add_rounded),
+            label: const Text('Nouveau compte'),
+            onPressed: droits ? () => _editer(context, ref, null) : null,
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         for (final e in employes)
-          ListTile(
-            leading: CircleAvatar(child: Text(e.nom.characters.first)),
-            title: Text(e.nom, style: TextStyle(color: e.actif ? null : Colors.grey)),
-            subtitle: Text('${e.role.libelle}${e.actif ? '' : ' · désactivé'}'),
-            onTap: () => _editer(context, ref, e),
+          Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: e.actif ? identite.secondaire : p.bordure,
+                child: Text(e.nom.characters.first, style: AppTypo.titre(Colors.white, taille: 16)),
+              ),
+              title: Text(e.nom + (e.id == moi?.id ? ' (vous)' : ''), style: TextStyle(color: e.actif ? null : p.texteDiscret)),
+              subtitle: Text('${e.role.libelle}${e.actif ? '' : ' · désactivé'}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Modifier',
+                    icon: const Icon(Icons.edit_rounded),
+                    onPressed: droits ? () => _editer(context, ref, e) : null,
+                  ),
+                  IconButton(
+                    tooltip: 'Supprimer le compte',
+                    icon: Icon(Icons.delete_outline_rounded, color: droits && e.id != moi?.id ? p.erreur : null),
+                    onPressed: droits && e.id != moi?.id ? () => _supprimer(context, ref, e) : null,
+                  ),
+                ],
+              ),
+            ),
           ),
       ],
     );
   }
 
+  Future<void> _supprimer(BuildContext context, WidgetRef ref, Employe e) async {
+    final ok = await confirmer(
+      context,
+      'Supprimer le compte de ${e.nom} ?',
+      '${e.nom} ne pourra plus se connecter. Son nom reste dans l’historique (factures, journal).',
+    );
+    if (!ok || !context.mounted) return;
+    await essayer(context, () => ref.read(serveurAppareilsProvider).supprimerEmploye(e.id), succes: 'Compte supprimé');
+  }
+
   Future<void> _editer(BuildContext context, WidgetRef ref, Employe? e) async {
     final nom = TextEditingController(text: e?.nom ?? '');
     final pin = TextEditingController();
+    final pin2 = TextEditingController();
     var role = e?.role ?? Role.serveuse;
     var actif = e?.actif ?? true;
+    String? erreur;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: Text(e == null ? 'Nouvel employé' : e.nom),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nom,
-                decoration: const InputDecoration(labelText: 'Nom'),
-              ),
-              DropdownButtonFormField<Role>(
-                initialValue: role,
-                decoration: const InputDecoration(labelText: 'Rôle'),
-                items: [for (final r in Role.values) DropdownMenuItem(value: r, child: Text(r.libelle))],
-                onChanged: (v) => role = v!,
-              ),
-              TextField(
-                controller: pin,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 4,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: e == null ? 'Code PIN (4 chiffres)' : 'Nouveau code PIN (laisser vide pour garder)',
+          title: Text(e == null ? 'Nouveau compte' : 'Modifier ${e.nom}'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nom, decoration: const InputDecoration(labelText: 'Nom')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<Role>(
+                  initialValue: role,
+                  decoration: const InputDecoration(labelText: 'Rôle'),
+                  items: [for (final r in Role.values) DropdownMenuItem(value: r, child: Text(r.libelle))],
+                  onChanged: (v) => role = v!,
                 ),
-              ),
-              if (e != null)
-                SwitchListTile(
-                  title: const Text('Actif'),
-                  subtitle: const Text('Désactivé : ne peut plus se connecter, son historique reste'),
-                  value: actif,
-                  onChanged: (v) => setState(() => actif = v),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: pin,
+                  keyboardType: TextInputType.number,
+                  obscureText: true,
+                  maxLength: pinMax,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: e == null ? 'Code personnel (6 à 10 chiffres)' : 'Nouveau code (laisser vide pour garder)',
+                  ),
                 ),
-            ],
+                TextField(
+                  controller: pin2,
+                  keyboardType: TextInputType.number,
+                  obscureText: true,
+                  maxLength: pinMax,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(labelText: 'Confirmer le code'),
+                ),
+                if (e != null)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Compte actif'),
+                    subtitle: const Text('Désactivé : ne peut plus se connecter'),
+                    value: actif,
+                    onChanged: (v) => setState(() => actif = v),
+                  ),
+                if (erreur != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(erreur!, style: TextStyle(color: context.pal.erreur, fontWeight: FontWeight.w600)),
+                  ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Enregistrer')),
+            FilledButton(
+              onPressed: () {
+                final code = pin.text;
+                String? err;
+                if (nom.text.trim().length < 2) {
+                  err = 'Indiquez le nom.';
+                } else if (e == null && code.isEmpty) {
+                  err = 'Choisissez un code personnel.';
+                } else if (code.isNotEmpty) {
+                  err = verifierFormatPin(code) ?? (code != pin2.text ? 'Les deux codes ne correspondent pas.' : null);
+                }
+                if (err != null) {
+                  setState(() => erreur = err);
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Enregistrer'),
+            ),
           ],
         ),
       ),
     );
     if (ok != true || !context.mounted) return;
+    final serveur = ref.read(serveurAppareilsProvider);
     await essayer(
       context,
-      () => ref
-          .read(adminServiceProvider)
-          .enregistrerEmploye(
-            ref.read(acteurProvider)!,
-            id: e?.id,
-            nom: nom.text,
-            role: role,
-            nouveauPin: pin.text.isEmpty ? null : pin.text,
-            actif: actif,
-          ),
-      succes: 'Employé enregistré',
+      () => e == null
+          ? serveur.creerEmploye(nom: nom.text, role: role, pin: pin.text)
+          : serveur.modifierEmploye(
+              e.id,
+              nom: nom.text.trim() == e.nom ? null : nom.text,
+              role: role == e.role ? null : role,
+              actif: actif == e.actif ? null : actif,
+              pin: pin.text.isEmpty ? null : pin.text,
+            ),
+      succes: e == null ? 'Compte créé' : 'Compte modifié',
     );
   }
 }

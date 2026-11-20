@@ -1,6 +1,6 @@
+import 'package:gestion_restaurant/donnees/base.dart';
 import 'dart:math';
 
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gestion_restaurant/core/calculs.dart';
 import 'package:gestion_restaurant/models/modeles.dart';
@@ -13,7 +13,7 @@ import 'package:gestion_restaurant/services/donnees_demo.dart';
 /// facturation et clôture. Tout doit tomber juste, au franc près.
 void main() {
   test('3 serveuses, 100 commandes, 12 tables : totaux, stock, numérotation et caisse cohérents', () async {
-    final db = RestoDb(fs: FakeFirebaseFirestore(), idRestaurant: 'demo', appareil: 'test');
+    final db = RestoDb(fs: BaseLocale.autonome(), idRestaurant: 'demo', appareil: 'test');
     await remplirDemo(db);
     final cmd = CommandeService(db);
     final caisse = CaisseService(db);

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../donnees/base.dart';
 
 import '../core/calculs.dart';
 import '../models/modeles.dart';

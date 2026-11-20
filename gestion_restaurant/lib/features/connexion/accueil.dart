@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/pin.dart';
 import '../../models/modeles.dart';
+import '../../services/db.dart';
 import '../../state/providers.dart';
 import '../../widgets/banniere_version.dart';
 import '../../widgets/barre_etat.dart';
@@ -89,38 +90,47 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
   String _pin = '';
   String? _erreur;
 
+  bool _verification = false;
+
   void _touche(String c) {
+    if (_verification) return;
+    if (c == '✓') {
+      _verifier();
+      return;
+    }
     setState(() {
       _erreur = null;
       if (c == '⌫') {
         if (_pin.isNotEmpty) _pin = _pin.substring(0, _pin.length - 1);
         return;
       }
-      if (_pin.length < 4) _pin += c;
+      if (_pin.length < pinMax) _pin += c;
     });
-    if (_pin.length == 4) {
-      // Laisse le 4e point s'allumer avant de vérifier.
-      Future.delayed(duree(context, 160), _verifier);
-    }
   }
 
-  void _verifier() {
+  /// Vérification par le serveur (en ligne) ou sur l'appareil (hors ligne).
+  Future<void> _verifier() async {
     if (!mounted || _choisi == null) return;
+    if (_pin.length < pinMin) {
+      setState(() => _erreur = 'Le code contient au moins $pinMin chiffres');
+      _secousse.currentState?.secouer();
+      return;
+    }
     final e = _choisi!;
-    final db = ref.read(dbProvider);
-    // Vérification locale du code haché : fonctionne hors ligne.
-    final ok = hacherPin(idRestaurant: db.idRestaurant, idEmploye: e.id, pin: _pin) == e.pinHash;
-    if (ok) {
-      ref.read(utilisateurProvider.notifier).connecter(e);
-      // Administrateur : droits serveur temporaires (PIN revérifié côté
-      // serveur), indispensables pour valider depuis l'ordinateur partagé.
-      if (e.role == Role.admin) ref.read(elevationProvider.notifier).demarrer(e, _pin);
-    } else {
+    setState(() => _verification = true);
+    try {
+      final c = await ref.read(serveurAppareilsProvider).connecter(e, _pin);
+      if (!mounted) return;
+      ref.read(utilisateurProvider.notifier).connecter(c.employe);
+    } on ErreurMetier catch (err) {
+      if (!mounted) return;
       _secousse.currentState?.secouer();
       setState(() {
         _pin = '';
-        _erreur = 'Code incorrect';
+        _erreur = err.message;
       });
+    } finally {
+      if (mounted) setState(() => _verification = false);
     }
   }
 
@@ -267,20 +277,20 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
           color: Colors.white,
         ),
       ),
-      Text('Tapez votre code à 4 chiffres', style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
+      Text('Tapez votre code personnel puis ✓', style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
       const SizedBox(height: 18),
       ShakeWrapper(
         key: _secousse,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (var i = 0; i < 4; i++)
+            for (var i = 0; i < (_pin.length < pinMin ? pinMin : _pin.length); i++)
               AnimatedContainer(
                 duration: duree(context, 220),
                 curve: Curves.easeOutBack,
-                margin: const EdgeInsets.all(9),
-                width: i < _pin.length ? 22 : 16,
-                height: i < _pin.length ? 22 : 16,
+                margin: const EdgeInsets.all(7),
+                width: i < _pin.length ? 20 : 14,
+                height: i < _pin.length ? 20 : 14,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _erreur != null ? identite.erreur : (i < _pin.length ? identite.accent : Colors.transparent),
@@ -314,13 +324,13 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
           crossAxisSpacing: 14,
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            for (final c in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'])
+            for (final c in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '✓'])
               c.isEmpty
                   ? const SizedBox()
                   : Semantics(
                       container: true,
                       button: true,
-                      label: c == '⌫' ? 'Effacer' : c,
+                      label: c == '⌫' ? 'Effacer' : (c == '✓' ? 'Valider' : c),
                       excludeSemantics: true,
                       child: BouncyTapWrapper(
                         scale: 0.88,
@@ -329,11 +339,15 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: c == '⌫' ? 0.04 : 0.09),
+                            color: c == '✓' ? identite.principale : Colors.white.withValues(alpha: c == '⌫' ? 0.04 : 0.09),
                             border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                           ),
                           child: c == '⌫'
                               ? const Icon(Icons.backspace_outlined, color: Colors.white, size: 26)
+                              : c == '✓'
+                              ? (_verification
+                                    ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                                    : const Icon(Icons.check_rounded, color: Colors.white, size: 32))
                               : Text(
                                   c,
                                   style: TextStyle(

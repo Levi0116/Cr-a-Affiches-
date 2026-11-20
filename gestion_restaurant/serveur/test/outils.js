@@ -77,7 +77,7 @@ export async function demarrer() {
     await new Promise((ok) => serveur.close(ok));
     await pool.end();
   };
-  return { pool, appel, lier, connecter, idAdmin, idServeuse, fermer };
+  return { pool, appel, lier, connecter, idAdmin, idServeuse, fermer, port: serveur.address().port };
 }
 
 export const lot = (auteur, ops, extra = {}) => ({ id: crypto.randomUUID(), auteur, faitLe: Date.now(), ops, ...extra });

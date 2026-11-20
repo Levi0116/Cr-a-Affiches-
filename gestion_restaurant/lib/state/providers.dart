@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../donnees/base.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -28,7 +28,10 @@ class UtilisateurConnecte extends Notifier<Employe?> {
   @override
   Employe? build() => null;
   void connecter(Employe e) => state = e;
-  void deconnecter() => state = null;
+  void deconnecter() {
+    ref.read(serveurAppareilsProvider).deconnecter();
+    state = null;
+  }
 }
 
 final utilisateurProvider = NotifierProvider<UtilisateurConnecte, Employe?>(UtilisateurConnecte.new);
@@ -52,7 +55,7 @@ final employesProvider = StreamProvider<List<Employe>>(
       .watch(dbProvider)
       .employes
       .snapshots()
-      .map((q) => _docs(q, Employe.fromDoc)..sort((a, b) => a.nom.compareTo(b.nom))),
+      .map((q) => _docs(q, Employe.fromDoc).where((e) => !e.supprime).toList()..sort((a, b) => a.nom.compareTo(b.nom))),
 );
 
 final zonesProvider = StreamProvider<List<Zone>>(
@@ -231,8 +234,8 @@ final horlogeProvider = StreamProvider<DateTime>((ref) async* {
 
 // ============================================================ Appareils
 
-/// Opérations serveur (liaison, élévation admin, retrait) — remplacé au
-/// démarrage par ServeurFirebase ou ServeurDemo.
+/// Opérations serveur (connexion, comptes, appareils) — remplacé au
+/// démarrage par ServeurApi ou ServeurDemo.
 final serveurAppareilsProvider = Provider<ServeurAppareils>((ref) => throw UnimplementedError());
 
 class Appareil {
@@ -258,7 +261,7 @@ class Appareil {
       nom: m['nom'] as String? ?? 'Appareil',
       type: TypeAppareil.values.asNameMap()[m['type']] ?? TypeAppareil.tablette,
       admin: m['admin'] as bool? ?? false,
-      actif: m['actif'] as bool? ?? true,
+      actif: m['revoque'] != true && m['actif'] != false,
       lieLe: l is Timestamp ? l.toDate() : (l is DateTime ? l : null),
     );
   }
@@ -276,81 +279,16 @@ final appareilsProvider = StreamProvider<List<Appareil>>(
       ),
 );
 
-// ======================================================= Élévation admin
+// ================================================== Droits administrateur
 
-enum StatutElevation { inutile, enCours, active, horsLigne, refusee }
-
-class EtatElevation {
-  final StatutElevation statut;
-  final DateTime? jusqua;
-  final String? message;
-  const EtatElevation(this.statut, {this.jusqua, this.message});
-}
-
-/// Sur l'ordinateur partagé, l'administrateur qui se connecte reçoit des
-/// droits serveur pour 15 minutes (PIN vérifié par la Cloud Function), et
-/// ils sont renouvelés tant qu'il reste connecté. Le PIN n'est gardé en
-/// mémoire que pendant sa session.
-class Elevation extends Notifier<EtatElevation> {
-  Timer? _minuteur;
-  String? _id;
-  String? _pin;
-
-  @override
-  EtatElevation build() {
-    ref.listen(utilisateurProvider, (_, e) {
-      if (e == null || e.role != Role.admin) arreter();
-    });
-    ref.onDispose(() => _minuteur?.cancel());
-    return const EtatElevation(StatutElevation.inutile);
-  }
-
-  Future<void> demarrer(Employe e, String pin) async {
-    if (e.role != Role.admin) return;
-    _id = e.id;
-    _pin = pin;
-    final etat = await ref.read(serveurAppareilsProvider).etat().catchError((_) => const EtatAppareil(uid: ''));
-    if (etat.admin) {
-      state = const EtatElevation(StatutElevation.active); // téléphone du gérant : droits permanents
-      return;
-    }
-    await _demander();
-  }
-
-  Future<void> _demander() async {
-    final id = _id, pin = _pin;
-    if (id == null || pin == null) return;
-    state = const EtatElevation(StatutElevation.enCours);
-    _minuteur?.cancel();
-    try {
-      final jusqua = await ref
-          .read(serveurAppareilsProvider)
-          .elevationAdmin(idEmploye: id, pin: pin)
-          .timeout(const Duration(seconds: 15));
-      if (_id == null) return;
-      state = EtatElevation(StatutElevation.active, jusqua: jusqua);
-      final avant = jusqua.difference(DateTime.now()) - const Duration(minutes: 2);
-      _minuteur = Timer(avant.isNegative ? const Duration(seconds: 30) : avant, _demander);
-    } on ErreurMetier catch (e) {
-      state = EtatElevation(StatutElevation.refusee, message: e.message);
-    } catch (_) {
-      // Hors ligne : on réessaie chaque minute.
-      state = const EtatElevation(StatutElevation.horsLigne);
-      _minuteur = Timer(const Duration(minutes: 1), _demander);
-    }
-  }
-
-  void arreter() {
-    _minuteur?.cancel();
-    final etaitActive = state.statut == StatutElevation.active && state.jusqua != null;
-    _id = null;
-    _pin = null;
-    if (etaitActive) ref.read(serveurAppareilsProvider).finElevation().ignore();
-    if (state.statut != StatutElevation.inutile) state = const EtatElevation(StatutElevation.inutile);
-  }
-}
-
-final elevationProvider = NotifierProvider<Elevation, EtatElevation>(Elevation.new);
+/// Droits administrateur utilisables maintenant : administrateur connecté
+/// en ligne (code vérifié par le serveur) ou téléphone du gérant. Un
+/// administrateur connecté hors ligne peut consulter, mais les actions
+/// d'administration attendent une connexion en ligne.
+final droitsAdminProvider = Provider<bool>((ref) {
+  final e = ref.watch(utilisateurProvider);
+  return ref.watch(serveurAppareilsProvider).droitsAdmin(e);
+});
 
 // ======================================================== Notifications
 

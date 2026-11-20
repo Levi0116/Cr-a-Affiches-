@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../donnees/base.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -23,12 +23,20 @@ class Acteur {
 /// serveur dès que la connexion le permet. [enAttente] compte les envois non
 /// encore confirmés, pour l'indicateur « Hors ligne – N actions en attente ».
 class RestoDb {
-  final FirebaseFirestore fs;
+  final BaseLocale fs;
   final String idRestaurant;
   final String appareil;
+  /// Écritures pas encore confirmées par le serveur (alimenté par la synchronisation).
   final ValueNotifier<int> enAttente = ValueNotifier(0);
+
+  /// Serveur joignable (alimenté par la synchronisation ; toujours vrai en démonstration).
+  final ValueNotifier<bool> enLigne = ValueNotifier(true);
   final ValueNotifier<String?> derniereErreur = ValueNotifier(null);
   static const _uuid = Uuid();
+
+  /// Vrai si les droits administrateur sont confirmés par le serveur
+  /// (session en ligne ou téléphone du gérant). Toujours vrai en démonstration.
+  bool Function() adminConfirme = () => true;
 
   RestoDb({required this.fs, required this.idRestaurant, required this.appareil});
 
@@ -93,14 +101,10 @@ class RestoDb {
   /// Hors ligne, le Future ne se termine qu'au retour de la connexion :
   /// l'interface ne doit donc pas l'attendre pour continuer.
   Future<void> envoyer(WriteBatch b) {
-    enAttente.value++;
-    return b
-        .commit()
-        .catchError((Object e) {
-          derniereErreur.value = '$e';
-          throw e;
-        })
-        .whenComplete(() => enAttente.value--);
+    return b.commit().catchError((Object e) {
+      derniereErreur.value = '$e';
+      throw e;
+    });
   }
 
   /// Pour les actions faisables hors ligne : on n'attend pas l'accusé du

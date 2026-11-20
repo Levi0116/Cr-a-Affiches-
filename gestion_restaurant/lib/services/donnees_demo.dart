@@ -3,8 +3,8 @@ import 'db.dart';
 
 /// Remplit le restaurant de démonstration « Chez les Amani » (menu type).
 ///
-/// PIN de démonstration : Awa 1111, Fatou 2222, Koffi (caisse) 3333,
-/// Moussa (stock) 4444, Patron (admin) 0000.
+/// Codes de démonstration (6 chiffres) : Awa 241197, Fatou 315208,
+/// Koffi (caisse) 426319, Moussa (stock) 537420, Patron (admin) 482615.
 Future<void> remplirDemo(RestoDb db) async {
   final b = db.fs.batch();
   b.set(db.resto, {
@@ -13,25 +13,27 @@ Future<void> remplirDemo(RestoDb db) async {
     'adresse': '',
     'telephone': '+226 65 91 11 76',
     'mentionsFacture': '',
-    'messageBasTicket': 'Merci et à bientôt !',
+    'slogan': 'Le goût de l’Afrique, la signature AMANI',
+    'messageBasTicket': 'Merci et à bientôt chez les Amani !',
     'soumisTva': false,
     'tauxTva': 18,
     'deconnexionMinutes': 5,
   });
 
   const employes = [
-    ('e-awa', 'Awa', 'serveuse', '1111'),
-    ('e-fatou', 'Fatou', 'serveuse', '2222'),
-    ('e-koffi', 'Koffi', 'caissier', '3333'),
-    ('e-moussa', 'Moussa', 'gestionnaire', '4444'),
-    ('e-patron', 'Patron', 'admin', '0000'),
+    ('e-awa', 'Awa', 'serveuse', '241197'),
+    ('e-fatou', 'Fatou', 'serveuse', '315208'),
+    ('e-koffi', 'Koffi', 'caissier', '426319'),
+    ('e-moussa', 'Moussa', 'gestionnaire', '537420'),
+    ('e-patron', 'Patron', 'admin', '482615'),
   ];
   for (final (id, nom, role, pin) in employes) {
     b.set(db.employes.doc(id), {
       'nom': nom,
       'role': role,
       'actif': true,
-      'pinHash': hacherPin(idRestaurant: db.idRestaurant, idEmploye: id, pin: pin),
+      // Démonstration : moins d'itérations pour un démarrage instantané.
+      'pinVerif': await hacherPin(pin, iterations: 2000),
     });
   }
 

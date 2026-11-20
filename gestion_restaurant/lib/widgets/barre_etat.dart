@@ -29,10 +29,13 @@ class IndicateurConnexion extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final db = ref.watch(dbProvider);
-    final enLigne = ref.watch(reseauProvider).value ?? true;
-    return ValueListenableBuilder<int>(
-      valueListenable: db.enAttente,
-      builder: (context, n, _) => OfflineStatusPill(enLigne: enLigne, enAttente: n, compact: compact),
+    final reseau = ref.watch(reseauProvider).value ?? true;
+    return ValueListenableBuilder<bool>(
+      valueListenable: db.enLigne,
+      builder: (context, serveur, _) => ValueListenableBuilder<int>(
+        valueListenable: db.enAttente,
+        builder: (context, n, _) => OfflineStatusPill(enLigne: reseau && serveur, enAttente: n, compact: compact),
+      ),
     );
   }
 }

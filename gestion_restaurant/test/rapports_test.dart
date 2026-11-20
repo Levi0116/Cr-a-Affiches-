@@ -1,4 +1,4 @@
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:gestion_restaurant/donnees/base.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:gestion_restaurant/core/rapports.dart';
@@ -34,7 +34,7 @@ void main() {
     const awa = Acteur(id: 'e-awa', nom: 'Awa', role: Role.serveuse);
     const fatou = Acteur(id: 'e-fatou', nom: 'Fatou', role: Role.serveuse);
     const koffi = Acteur(id: 'e-koffi', nom: 'Koffi', role: Role.caissier);
-    final db = RestoDb(fs: FakeFirebaseFirestore(), idRestaurant: 'demo', appareil: 'test');
+    final db = RestoDb(fs: BaseLocale.autonome(), idRestaurant: 'demo', appareil: 'test');
     await remplirDemo(db);
     final cmd = CommandeService(db);
     final caisse = CaisseService(db);

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import '../../services/db.dart';
+import '../../donnees/api.dart';
 import '../../services/serveur_appareils.dart';
 import '../../theme/animated_widgets.dart';
 import '../../theme/app_theme.dart';
@@ -12,11 +12,12 @@ import '../../theme/motif.dart';
 
 /// Première mise en service d'un appareil (section 2.1) : l'administrateur
 /// affiche un QR code (Administration → Appareils) ; on le scanne, ou on
-/// tape les 6 caractères. Une seule fois par appareil.
+/// tape les 8 caractères. Une seule fois par appareil.
 class EcranLiaison extends StatefulWidget {
-  final ServeurAppareils serveur;
-  final ValueChanged<EtatAppareil> onLie;
-  const EcranLiaison({super.key, required this.serveur, required this.onLie});
+  /// Envoie le code au serveur ; lève [ErreurApi] si refusé.
+  final Future<void> Function(String code) lier;
+  final VoidCallback onLie;
+  const EcranLiaison({super.key, required this.lier, required this.onLie});
 
   @override
   State<EcranLiaison> createState() => _EcranLiaisonState();
@@ -32,8 +33,8 @@ class _EcranLiaisonState extends State<EcranLiaison> {
 
   Future<void> _lier([String? code]) async {
     final c = (code ?? _ctrl.text).trim().toUpperCase();
-    if (c.length != 6) {
-      setState(() => _erreur = 'Le code comporte 6 caractères');
+    if (c.length != 8) {
+      setState(() => _erreur = 'Le code comporte 8 caractères');
       _secousse.currentState?.secouer();
       return;
     }
@@ -42,13 +43,13 @@ class _EcranLiaisonState extends State<EcranLiaison> {
       _erreur = null;
     });
     try {
-      final etat = await widget.serveur.lier(c);
+      await widget.lier(c);
       if (!mounted) return;
       showSuccessBurst(context, 'Appareil lié');
       await Future<void>.delayed(duree(context, 900));
-      widget.onLie(etat);
-    } on ErreurMetier catch (e) {
-      setState(() => _erreur = e.message);
+      widget.onLie();
+    } on ErreurApi catch (e) {
+      setState(() => _erreur = e.horsLigne ? 'Connexion impossible : vérifiez le Wi-Fi ou les données mobiles.' : e.message);
       _secousse.currentState?.secouer();
     } catch (_) {
       setState(() => _erreur = 'Connexion impossible : vérifiez le Wi-Fi ou les données mobiles.');
@@ -119,7 +120,7 @@ class _EcranLiaisonState extends State<EcranLiaison> {
                             child: TextField(
                               controller: _ctrl,
                               textAlign: TextAlign.center,
-                              maxLength: 6,
+                              maxLength: 8,
                               autofocus: !_cameraDisponible,
                               textCapitalization: TextCapitalization.characters,
                               inputFormatters: [
