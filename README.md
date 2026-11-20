@@ -34,3 +34,7 @@ Tu peux aussi tout remplir à la main : clique un exemple (Galaxy A17, Fort 1, Z
 
 - `index.html` : l'éditeur et l'affiche (HTML/CSS/JS).
 - `vendor/html-to-image.js` : bibliothèque d'export PNG (licence MIT, voir `vendor/html-to-image.LICENSE`).
+
+## Autre projet dans ce dépôt
+
+- `gestion_restaurant/` : logiciel de gestion de restaurant / maquis (Flutter + Firebase). Voir `gestion_restaurant/README.md`.

@@ -1,0 +1,278 @@
+import '../donnees/base.dart';
+
+import '../models/modeles.dart';
+import 'db.dart';
+
+/// Module Administrateur (section 3.4) et validations (section 5.2).
+class AdminService {
+  final RestoDb db;
+  AdminService(this.db);
+
+  void _exigerAdmin(Acteur a) {
+    if (!a.estAdmin) throw ErreurMetier('Réservé à l’administrateur');
+    if (!db.adminConfirme()) {
+      throw ErreurMetier('Connecté hors ligne : reconnectez-vous quand internet est revenu pour cette action.');
+    }
+  }
+
+  // ------------------------------------------------------------ Validations
+
+  Future<void> traiterDemande(Acteur admin, DemandeValidation d, bool accepter) async {
+    _exigerAdmin(admin);
+    final frais = DemandeValidation.fromDoc(await db.demandesValidation.doc(d.id).get());
+    if (frais.statut != StatutValidation.enAttente) {
+      throw ErreurMetier('Demande déjà traitée');
+    }
+    final b = db.fs.batch();
+    b.update(db.demandesValidation.doc(d.id), {
+      'statut': accepter ? StatutValidation.validee.name : StatutValidation.refusee.name,
+      'valideur': admin.nom,
+      'traiteeLe': Timestamp.now(),
+    });
+    final det = d.detail;
+    if (!accepter) {
+      if (d.type == TypeValidation.annulation) {
+        b.update(db.lignes(det['idSession'] as String).doc(det['idLigne'] as String), {'annulationDemandee': false});
+      }
+      db.audit(b, admin, 'refus_${d.type.name}', '${_resume(d)} (demandé par ${d.demandeur})');
+      await db.envoyerSansBloquer(b);
+      return;
+    }
+    switch (d.type) {
+      case TypeValidation.annulation:
+        await _appliquerAnnulation(b, admin, d);
+      case TypeValidation.offert:
+        await _appliquerOffert(b, admin, d);
+      case TypeValidation.remise:
+        await _verifierSessionModifiable(det['idSession'] as String);
+        b.update(db.sessions.doc(det['idSession'] as String), {
+          'remise': {'type': det['typeRemise'], 'valeur': det['valeur'], 'motif': d.motif, 'validePar': admin.nom},
+        });
+      case TypeValidation.ajustement:
+        b.set(db.mouvementsStock.doc(db.nouvelId()), {
+          ...db.meta(admin),
+          'idArticle': det['idArticle'],
+          'nomArticle': det['nom'],
+          'type': 'inventaire',
+          'quantite': det['ecart'],
+          'auteur': d.demandeur,
+          'motif': 'Inventaire validé par ${admin.nom}',
+        });
+        b.update(db.articles.doc(det['idArticle'] as String), {'stock': FieldValue.increment(det['ecart'] as num)});
+    }
+    db.audit(b, admin, 'validation_${d.type.name}', '${_resume(d)} (demandé par ${d.demandeur}, motif : ${d.motif})');
+    await db.envoyerSansBloquer(b);
+  }
+
+  String _resume(DemandeValidation d) {
+    final det = d.detail;
+    return switch (d.type) {
+      TypeValidation.annulation ||
+      TypeValidation.offert => '${det['quantite']} × ${det['nom']} table ${det['numeroTable']}',
+      TypeValidation.remise =>
+        'Remise ${det['valeur']}${det['typeRemise'] == 'pourcentage' ? ' %' : ' F'} table ${det['numeroTable']}',
+      TypeValidation.ajustement => '${det['nom']} : écart ${det['ecart']}',
+    };
+  }
+
+  Future<SessionTable> _verifierSessionModifiable(String idSession) async {
+    final s = SessionTable.fromDoc(await db.sessions.doc(idSession).get());
+    if (s.statut != StatutSession.ouverte && s.statut != StatutSession.addition) {
+      throw ErreurMetier('La facture de cette table est déjà émise : faites un avoir après paiement');
+    }
+    return s;
+  }
+
+  /// Ligne marquée « annulée » (jamais supprimée), stock remis, total corrigé.
+  Future<void> _appliquerAnnulation(WriteBatch b, Acteur admin, DemandeValidation d) async {
+    final det = d.detail;
+    final idSession = det['idSession'] as String;
+    await _verifierSessionModifiable(idSession);
+    final ref = db.lignes(idSession).doc(det['idLigne'] as String);
+    final ligne = LigneCommande.fromDoc(await ref.get());
+    if (ligne.annulee) throw ErreurMetier('Ligne déjà annulée');
+    b.update(ref, {
+      'statut': StatutLigne.annulee.name,
+      'motifAnnulation': d.motif,
+      'demandeePar': d.demandeur,
+      'validePar': admin.nom,
+      'annulationDemandee': false,
+    });
+    b.update(db.sessions.doc(idSession), {'total': FieldValue.increment(-ligne.montant)});
+    final snap = await db.articles.doc(ligne.idArticle).get();
+    final article = snap.exists ? Article.fromDoc(snap) : null;
+    void mouvement(String idArticle, String nom, num quantite) => b.set(db.mouvementsStock.doc(db.nouvelId()), {
+      ...db.meta(admin),
+      'idArticle': idArticle,
+      'nomArticle': nom,
+      'type': 'annulation',
+      'quantite': quantite,
+      'auteur': d.demandeur,
+      'motif': '${d.motif} (${ligne.quantite} × ${ligne.nom})',
+    });
+    final maj = <String, dynamic>{'nbVentes': FieldValue.increment(-ligne.quantite)};
+    if (ligne.deductions.isNotEmpty) {
+      // Plat à fiche technique : on remet exactement ce qui a été déduit.
+      for (final i in ligne.deductions) {
+        mouvement(i.idArticle, i.nom, i.quantite);
+        b.update(db.articles.doc(i.idArticle), {'stock': FieldValue.increment(i.quantite)});
+      }
+    } else if (article?.suiviStock ?? false) {
+      mouvement(ligne.idArticle, ligne.nom, ligne.quantite);
+      maj['stock'] = FieldValue.increment(ligne.quantite);
+    }
+    if (article?.consigne ?? false) maj['vides'] = FieldValue.increment(-ligne.quantite);
+    if (article != null) b.update(db.articles.doc(ligne.idArticle), maj);
+  }
+
+  Future<void> _appliquerOffert(WriteBatch b, Acteur admin, DemandeValidation d) async {
+    final det = d.detail;
+    final idSession = det['idSession'] as String;
+    await _verifierSessionModifiable(idSession);
+    final ref = db.lignes(idSession).doc(det['idLigne'] as String);
+    final ligne = LigneCommande.fromDoc(await ref.get());
+    if (ligne.offert || ligne.annulee) return;
+    b.update(ref, {'offert': true, 'motifOffert': d.motif, 'validePar': admin.nom});
+    b.update(db.sessions.doc(idSession), {'total': FieldValue.increment(-ligne.montant)});
+  }
+
+  // ------------------------------------------------------------------- Menu
+
+  Future<void> enregistrerCategorie(Acteur a, {String? id, required String nom, required int ordre}) async {
+    _exigerAdmin(a);
+    final b = db.fs.batch();
+    b.set(db.categories.doc(id ?? db.nouvelId()), {
+      'nom': nom,
+      'ordre': ordre,
+      ...db.modif(a),
+    }, SetOptions(merge: true));
+    await db.envoyerSansBloquer(b);
+  }
+
+  /// Création ou modification d'un article. Les changements de prix sont
+  /// historisés et tracés dans le journal d'audit.
+  Future<void> enregistrerArticle(Acteur a, Article art, {Article? ancien, num stockInitial = 0}) async {
+    _exigerAdmin(a);
+    if (art.nom.trim().isEmpty) throw ErreurMetier('Nom obligatoire');
+    if (art.prixVente < 0) throw ErreurMetier('Prix invalide');
+    final b = db.fs.batch();
+    final id = ancien?.id ?? db.nouvelId();
+    final data = {...art.toMap(), ...db.modif(a)};
+    if (ancien == null) {
+      data.addAll({...db.meta(a), 'stock': 0, 'coutMoyen': 0, 'nbVentes': 0});
+      b.set(db.articles.doc(id), data);
+      if (stockInitial != 0) {
+        b.set(db.mouvementsStock.doc(db.nouvelId()), {
+          ...db.meta(a),
+          'idArticle': id,
+          'nomArticle': art.nom,
+          'type': 'ajustement',
+          'quantite': stockInitial,
+          'auteur': a.nom,
+          'motif': 'Stock initial',
+        });
+        b.update(db.articles.doc(id), {'stock': FieldValue.increment(stockInitial)});
+      }
+    } else {
+      b.update(db.articles.doc(id), data);
+      if (ancien.prixVente != art.prixVente) {
+        b.set(db.historiquePrix.doc(db.nouvelId()), {
+          ...db.meta(a),
+          'idArticle': id,
+          'nom': art.nom,
+          'ancienPrix': ancien.prixVente,
+          'nouveauPrix': art.prixVente,
+        });
+        db.audit(b, a, 'changement_prix', '${art.nom} : ${ancien.prixVente} F → ${art.prixVente} F');
+      }
+    }
+    await db.envoyerSansBloquer(b);
+  }
+
+  /// Fiche technique d'un plat : liste des ingrédients par portion.
+  /// Une fiche vide repasse le plat en « portions disponibles ».
+  Future<void> enregistrerRecette(Acteur a, Article plat, List<Ingredient> ingredients) async {
+    _exigerAdmin(a);
+    final valides = ingredients.where((i) => i.quantite > 0 && i.idArticle != plat.id).toList();
+    final b = db.fs.batch();
+    b.set(db.recettes.doc(plat.id), {
+      'idArticle': plat.id,
+      'nom': plat.nom,
+      'ingredients': [for (final i in valides) i.toMap()],
+      ...db.modif(a),
+    });
+    b.update(db.articles.doc(plat.id), {
+      'aRecette': valides.isNotEmpty,
+      if (valides.isNotEmpty) 'suiviStock': false,
+      ...db.modif(a),
+    });
+    db.audit(
+      b,
+      a,
+      'fiche_technique',
+      '${plat.nom} = ${valides.map((i) => '${i.quantite} ${i.unite} ${i.nom}'.replaceAll('  ', ' ')).join(' + ')}',
+    );
+    await db.envoyerSansBloquer(b);
+  }
+
+  // ----------------------------------------------------------------- Salle
+
+  Future<void> enregistrerZone(Acteur a, {String? id, required String nom, int ordre = 0}) async {
+    _exigerAdmin(a);
+    final b = db.fs.batch();
+    b.set(db.zones.doc(id ?? db.nouvelId()), {'nom': nom, 'ordre': ordre}, SetOptions(merge: true));
+    await db.envoyerSansBloquer(b);
+  }
+
+  Future<void> enregistrerTable(
+    Acteur a, {
+    String? id,
+    required String numero,
+    required String idZone,
+    int capacite = 4,
+    bool active = true,
+  }) async {
+    _exigerAdmin(a);
+    final b = db.fs.batch();
+    final ref = db.tables.doc(id ?? db.nouvelId());
+    b.set(ref, {
+      'numero': numero,
+      'idZone': idZone,
+      'capacite': capacite,
+      'active': active,
+      if (id == null) 'statut': StatutTable.libre.name,
+    }, SetOptions(merge: true));
+    await db.envoyerSansBloquer(b);
+  }
+
+  // Comptes employés : uniquement par le serveur (ServeurAppareils), jamais par la synchronisation.
+
+  // ------------------------------------------------------------- Paramètres
+
+  Future<void> enregistrerParametres(Acteur a, Restaurant r) async {
+    _exigerAdmin(a);
+    final b = db.fs.batch();
+    b.set(db.resto, {...r.toMap(), ...db.modif(a)}, SetOptions(merge: true));
+    db.audit(b, a, 'parametres', 'Paramètres du restaurant modifiés');
+    await db.envoyerSansBloquer(b);
+  }
+
+  Future<void> saisirDepense(
+    Acteur a, {
+    required String categorie,
+    required int montant,
+    String description = '',
+  }) async {
+    _exigerAdmin(a);
+    if (montant <= 0) throw ErreurMetier('Montant invalide');
+    final b = db.fs.batch();
+    b.set(db.depenses.doc(db.nouvelId()), {
+      ...db.meta(a),
+      'categorie': categorie,
+      'montant': montant,
+      'description': description,
+      'date': Timestamp.now(),
+    });
+    await db.envoyerSansBloquer(b);
+  }
+}
