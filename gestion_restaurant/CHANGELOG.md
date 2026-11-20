@@ -1,6 +1,25 @@
 # Journal des versions
 
-Format : `majeure.mineure.correctif` (section 9.1 du cahier des charges). La version de l'application est dans `pubspec.yaml` ; la dernière version publiée se déclare dans Firestore (`config/version`).
+Format : `majeure.mineure.correctif` (section 9.1 du cahier des charges). La version de l'application est dans `pubspec.yaml` ; la version proposée aux appareils se règle dans `serveur/.env` (`VERSION_DERNIERE`, `VERSION_MINIMALE`).
+
+## 2.0.0 — PWA, serveur Node.js + MySQL, refonte « Signature Amani »
+
+### Architecture
+- Application web installable (PWA) sur Android et Windows, à la place de l'APK et de Firebase.
+- Serveur Node.js (Express) + MySQL : API, droits d'écriture vérifiés, synchronisation en temps réel (écoute longue), alertes de stock, rapport du jour, journal d'audit.
+- Hors ligne : copie locale IndexedDB, file d'attente persistante (conservée au redémarrage), incréments sans conflit, service worker (démarrage sans internet).
+
+### Comptes et sécurité
+- Seul l'administrateur connecté en ligne crée, modifie ou supprime un compte ; au moins un administrateur garanti.
+- Codes personnels de 6 à 10 chiffres, codes trop simples refusés, un code par employé, blocage 15 min après 5 erreurs, empreinte PBKDF2-SHA256 salée.
+- Codes de liaison de 8 caractères ; appareil retiré : données effacées.
+- Hébergement durci : HTTPS, CSP, HSTS, limitation des requêtes, pare-feu, fail2ban, MySQL local, sauvegarde quotidienne.
+
+### Design
+- Nouvelle identité « Signature Amani » : nuit de forêt et sable, orange braise et or, police de marque Fraunces, motif Kita, boutons pilules.
+- Écran de connexion avec panneau de marque, slogan « Le goût de l'Afrique, la signature AMANI » et prestations.
+- Nouvelles cartes de tables (tables actives mises en avant) et cartes employés.
+- Menu de démonstration : cuisine ivoirienne et boissons locales.
 
 ## 1.0.0 — première livraison
 

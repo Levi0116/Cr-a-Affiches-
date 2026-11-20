@@ -2,14 +2,16 @@
 
 À dérouler **par le client lui-même**, sur le vrai matériel (tablettes, ordinateur de caisse, imprimante thermique), avant la mise en service (phase 10.6 du cahier des charges). Cocher chaque ligne.
 
-**Restaurant :** Restaurant Chez les Amani · **Version :** 1.0.0 · **Date :** ____ / ____ / ________
+**Restaurant :** Restaurant Chez les Amani · **Version :** 2.0.0 · **Date :** ____ / ____ / ________
 
 ## A. Mise en service
 
+- [ ] L'application est **installée** (Chrome → « Installer l'application ») sur chaque appareil et s'ouvre comme une application.
 - [ ] Le téléphone du gérant est lié (code du script de création) et voit l'administration.
-- [ ] L'ordinateur de caisse est lié depuis *Administration → Appareils* (QR code ou code à 6 caractères).
+- [ ] L'ordinateur de caisse est lié depuis *Administration → Appareils* (QR code ou code à 8 caractères).
 - [ ] Chaque tablette est liée ; une tablette **non liée** n'affiche que l'écran « Lier cet appareil ».
-- [ ] Chaque employé se connecte avec son PIN ; un PIN faux fait trembler les points et refuse l'accès.
+- [ ] Seul l'administrateur crée, modifie et supprime les comptes ; un code trop simple (123456, 111111) est refusé.
+- [ ] Chaque employé se connecte avec son code de 6 chiffres ou plus ; après 5 codes faux, le compte est bloqué 15 minutes.
 - [ ] Après quelques minutes sans toucher l'écran, l'employé est déconnecté.
 
 ## B. Service en salle (tablette)
@@ -36,7 +38,7 @@
 
 ## D. Validations et contrôle (gérant)
 
-- [ ] Une serveuse demande une annulation : le téléphone du gérant reçoit une notification.
+- [ ] Une serveuse demande une annulation : la demande apparaît aussitôt dans la cloche du téléphone du gérant.
 - [ ] Le gérant valide depuis son téléphone : la ligne est barrée « annulée », le stock et le total se corrigent seuls.
 - [ ] Sur l'ordinateur de caisse, l'administrateur connecté voit « Droits administrateur » et peut valider.
 - [ ] Une remise et un article offert ne s'appliquent qu'après validation.
@@ -47,12 +49,13 @@
 
 - [ ] Livraison en casiers convertie en bouteilles ; coût moyen mis à jour.
 - [ ] Plat à fiche technique : la vente retire les ingrédients ; les portions possibles baissent.
-- [ ] Passage sous le seuil : alerte dans la cloche et notification au gérant.
+- [ ] Passage sous le seuil : alerte dans la cloche (tous les appareils), y compris celui du gérant.
 - [ ] Perte avec motif ; inventaire compté soumis à validation.
 - [ ] Consignes : vides comptés à la vente, rendus à la livraison.
 
 ## F. Hors ligne (phase 10.3)
 
+- [ ] Fermer puis rouvrir l'application en mode avion : elle démarre quand même et l'employé peut se connecter.
 - [ ] Mettre une tablette en mode avion pendant une commande : la commande est gardée (« Hors ligne – N en attente »), puis envoyée au retour du réseau.
 - [ ] Couper le Wi-Fi 30 minutes pendant le service : tout continue sur les tablettes ; tout arrive à la caisse au retour.
 - [ ] Vendre deux fois la dernière bouteille hors ligne : le stock devient négatif et une alerte est envoyée, sans bloquer le service.
