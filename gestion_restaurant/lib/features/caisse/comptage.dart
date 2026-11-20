@@ -160,7 +160,7 @@ class _ComptageState extends State<_Comptage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(widget.titre, style: AppTypo.titre(p.texte, taille: 24)),
+                                  Text(widget.titre, style: AppTypo.marque(p.texte, taille: 28)),
                                   if (widget.sousTitre != null)
                                     Text(widget.sousTitre!, style: AppTypo.etiquette(p.texteSecondaire, taille: 14)),
                                 ],

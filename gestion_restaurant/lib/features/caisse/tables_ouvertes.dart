@@ -368,7 +368,7 @@ class _Ticket extends ConsumerWidget {
                   children: [
                     Text(
                       s.aEmporter ? s.numeroTable : 'Table ${s.numeroTable}',
-                      style: AppTypo.titre(p.texte, taille: 26),
+                      style: AppTypo.marque(p.texte, taille: 30),
                     ),
                     Text(
                       '${s.nomServeuse} · ouverte à ${heure(s.ouverture)}'

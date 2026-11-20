@@ -103,7 +103,7 @@ class _EcranStockState extends ConsumerState<EcranStock> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Stock', style: AppTypo.titre(p.texte, taille: 26)),
+                                Text('Stock', style: AppTypo.marque(p.texte, taille: 30)),
                                 Text(
                                   resto?.nom ?? '',
                                   overflow: TextOverflow.ellipsis,

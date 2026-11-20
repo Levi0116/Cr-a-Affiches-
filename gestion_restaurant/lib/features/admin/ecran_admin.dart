@@ -211,7 +211,7 @@ class _BarreLaterale extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Administration', style: AppTypo.titre(p.texte, taille: 18)),
+                        Text('Administration', style: AppTypo.marque(p.texte, taille: 21)),
                         Text(
                           resto?.nom ?? '',
                           maxLines: 1,
@@ -519,7 +519,8 @@ class _TableauDeBord extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$salut ${e?.nom ?? ''} 👋', style: AppTypo.titre(Colors.white, taille: 26)),
+                      Text('$salut ${e?.nom ?? ''}', style: AppTypo.marque(identite.texteSombre, taille: 32)),
+                      Text(identite.slogan, style: AppTypo.marque(identite.or, taille: 15, poids: FontWeight.w600, italique: true)),
                       Text(
                         dateJourFr(DateTime.now()),
                         style: AppTypo.etiquette(

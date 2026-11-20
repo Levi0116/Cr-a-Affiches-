@@ -367,7 +367,7 @@ class _EnTeteSalle extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Plan de salle', style: AppTypo.titre(p.texte, taille: etroit ? 22 : 26)),
+                Text('Plan de salle', style: AppTypo.marque(p.texte, taille: etroit ? 26 : 32)),
                 Text(
                   resto?.nom ?? '',
                   overflow: TextOverflow.ellipsis,

@@ -57,7 +57,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     fond: identite.fond,
     surface: identite.surface,
     surfaceElevee: identite.surface,
-    bordure: identite.texte.withValues(alpha: 0.08),
+    bordure: const Color(0xFFE6D9C2),
     texte: identite.texte,
     texteSecondaire: identite.texte.withValues(alpha: 0.68),
     texteDiscret: identite.texte.withValues(alpha: 0.45),
@@ -76,7 +76,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     fond: identite.nuit,
     surface: identite.surfaceSombre,
     surfaceElevee: identite.surfaceSombreElevee,
-    bordure: Colors.white.withValues(alpha: 0.08),
+    bordure: identite.accent.withValues(alpha: 0.10),
     texte: identite.texteSombre,
     texteSecondaire: identite.texteSombre.withValues(alpha: 0.72),
     texteDiscret: identite.texteSombre.withValues(alpha: 0.45),
@@ -169,6 +169,27 @@ abstract final class AppTypo {
 
   static TextStyle etiquette(Color couleur, {double taille = 13, FontWeight poids = FontWeight.w600}) =>
       TextStyle(fontFamily: identite.policeTexte, fontSize: taille, fontWeight: poids, color: couleur, height: 1.25);
+
+  /// Police de marque (serif chaleureuse) : titres d'écran, nom, slogan.
+  static TextStyle marque(Color couleur, {double taille = 28, FontWeight poids = FontWeight.w700, bool italique = false}) =>
+      TextStyle(
+        fontFamily: identite.policeMarque,
+        fontSize: taille,
+        fontWeight: poids,
+        fontStyle: italique ? FontStyle.italic : FontStyle.normal,
+        color: couleur,
+        letterSpacing: -0.3,
+        height: 1.12,
+      );
+
+  /// Sur-titre en petites capitales espacées (« CAISSE », « PILOTAGE »).
+  static TextStyle surTitre(Color couleur, {double taille = 12}) => TextStyle(
+    fontFamily: identite.policeTexte,
+    fontSize: taille,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 2.2,
+    color: couleur,
+  );
 }
 
 /// Ombres douces multicouches (proche + diffuse), plus marquées en sombre.
@@ -243,15 +264,17 @@ abstract final class AppTheme {
     );
     TextStyle? titre(TextStyle? s, FontWeight poids) =>
         s?.copyWith(fontFamily: identite.policeTitres, fontWeight: poids, color: p.texte, letterSpacing: -0.4);
+    TextStyle? marque(TextStyle? s) =>
+        s?.copyWith(fontFamily: identite.policeMarque, fontWeight: FontWeight.w700, color: p.texte, letterSpacing: -0.3);
 
     final textes = base.textTheme
         .apply(bodyColor: p.texte, displayColor: p.texte)
         .copyWith(
-          displayLarge: titre(base.textTheme.displayLarge, FontWeight.w800),
-          displayMedium: titre(base.textTheme.displayMedium, FontWeight.w800),
-          displaySmall: titre(base.textTheme.displaySmall, FontWeight.w800),
-          headlineLarge: titre(base.textTheme.headlineLarge, FontWeight.w800),
-          headlineMedium: titre(base.textTheme.headlineMedium, FontWeight.w800),
+          displayLarge: marque(base.textTheme.displayLarge),
+          displayMedium: marque(base.textTheme.displayMedium),
+          displaySmall: marque(base.textTheme.displaySmall),
+          headlineLarge: marque(base.textTheme.headlineLarge),
+          headlineMedium: marque(base.textTheme.headlineMedium),
           headlineSmall: titre(base.textTheme.headlineSmall, FontWeight.w700),
           titleLarge: titre(base.textTheme.titleLarge, FontWeight.w700),
           titleMedium: base.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: p.texte),
@@ -275,11 +298,11 @@ abstract final class AppTheme {
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: p.sombre ? p.fond : identite.secondaire,
-        foregroundColor: Colors.white,
+        foregroundColor: identite.accent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypo.titre(Colors.white),
+        titleTextStyle: AppTypo.marque(identite.texteSombre, taille: 24),
       ),
       cardTheme: CardThemeData(
         color: p.surface,
@@ -293,18 +316,21 @@ abstract final class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(64, 56),
+          padding: const EdgeInsets.symmetric(horizontal: 26),
           backgroundColor: p.principale,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: rayonPetit),
+          disabledBackgroundColor: p.texte.withValues(alpha: 0.10),
+          shape: const StadiumBorder(),
           textStyle: TextStyle(fontFamily: identite.policeTexte, fontSize: 17, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(64, 52),
-          foregroundColor: p.sombre ? p.texte : p.principale,
-          shape: RoundedRectangleBorder(borderRadius: rayonPetit),
-          side: BorderSide(color: p.sombre ? Colors.white24 : p.principale.withValues(alpha: 0.5), width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          foregroundColor: p.sombre ? p.accent : p.secondaire,
+          shape: const StadiumBorder(),
+          side: BorderSide(color: p.sombre ? p.accent.withValues(alpha: 0.35) : p.secondaire.withValues(alpha: 0.35), width: 1.5),
           textStyle: TextStyle(fontFamily: identite.policeTexte, fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -331,7 +357,7 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(identite.arrondi * 1.4),
           side: BorderSide(color: p.bordure),
         ),
-        titleTextStyle: AppTypo.titre(p.texte, taille: 22),
+        titleTextStyle: AppTypo.marque(p.texte, taille: 26),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: p.surfaceElevee,
@@ -352,7 +378,7 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: p.sombre ? Colors.white.withValues(alpha: 0.05) : p.fond,
+        fillColor: p.sombre ? identite.accent.withValues(alpha: 0.05) : const Color(0xFFFBF5EA),
         border: OutlineInputBorder(borderRadius: rayonPetit, borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(
           borderRadius: rayonPetit,
@@ -365,7 +391,8 @@ abstract final class AppTheme {
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: p.surface,
-        indicatorColor: p.principale.withValues(alpha: 0.16),
+        indicatorColor: p.principale.withValues(alpha: 0.14),
+        indicatorShape: const StadiumBorder(),
         selectedIconTheme: IconThemeData(color: p.principale),
         unselectedIconTheme: IconThemeData(color: p.texteSecondaire),
         selectedLabelTextStyle: TextStyle(

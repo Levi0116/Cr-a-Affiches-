@@ -77,26 +77,46 @@ class _FondTable extends StatelessWidget {
   final bool animeCouleur;
   const _FondTable({required this.couleur, required this.rayon, this.animeCouleur = true});
 
+  /// Table libre : carte sombre sobre au liseré vert (les tables actives ressortent).
+  bool get _sobre => couleur == identite.tableLibre;
+
   @override
   Widget build(BuildContext context) {
-    final deco = BoxDecoration(
-      borderRadius: rayon,
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color.lerp(couleur, Colors.white, 0.10)!, couleur, Color.lerp(couleur, Colors.black, 0.30)!],
-        stops: const [0, 0.5, 1],
-      ),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-    );
+    final deco = _sobre
+        ? BoxDecoration(
+            borderRadius: rayon,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [identite.surfaceSombreElevee, identite.surfaceSombre],
+            ),
+            border: Border.all(color: couleur.withValues(alpha: 0.55), width: 1.4),
+          )
+        : BoxDecoration(
+            borderRadius: rayon,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color.lerp(couleur, Colors.white, 0.14)!, couleur, Color.lerp(couleur, identite.nuit, 0.40)!],
+              stops: const [0, 0.48, 1],
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          );
     final motif = ClipRRect(
       borderRadius: rayon,
-      child: Align(
-        alignment: Alignment.topRight,
-        child: SizedBox.square(
-          dimension: 96,
-          child: CustomPaint(painter: MotifPainter(couleur: Colors.white, opacite: 0.14)),
-        ),
+      child: Stack(
+        children: [
+          Align(
+            alignment: Alignment.bottomRight,
+            child: SizedBox(
+              width: 120,
+              height: 80,
+              child: CustomPaint(painter: MotifPainter(couleur: _sobre ? couleur : Colors.white, opacite: _sobre ? 0.10 : 0.16)),
+            ),
+          ),
+          // Liseré tissé en bas des tables actives.
+          if (!_sobre) const Align(alignment: Alignment.bottomCenter, child: BandeKita(hauteur: 4)),
+        ],
       ),
     );
     // Changement d'état (libre → occupée → addition) : transition 300 ms.
@@ -143,7 +163,12 @@ class AnimatedTableCard extends StatelessWidget {
           child: AnimatedContainer(
             duration: duree(context, 300),
             curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(borderRadius: rayon, boxShadow: AppOmbres.lueur(couleur, force: 0.9)),
+            decoration: BoxDecoration(
+              borderRadius: rayon,
+              boxShadow: etat == EtatTable.libre
+                  ? [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6))]
+                  : AppOmbres.lueur(couleur, force: 1.1),
+            ),
             child: Stack(
               children: [
                 Positioned.fill(
@@ -171,7 +196,9 @@ class _ContenuCarte extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = session;
-    final blancDoux = Colors.white.withValues(alpha: 0.82);
+    final libre = etat == EtatTable.libre;
+    final texte = libre ? identite.texteSombre : Colors.white;
+    final blancDoux = texte.withValues(alpha: 0.78);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -185,15 +212,15 @@ class _ContenuCarte extends StatelessWidget {
                 height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: s != null && i < s.couverts ? 0.95 : 0.32),
+                  color: (libre ? identite.tableLibre : Colors.white).withValues(alpha: s != null && i < s.couverts ? 0.95 : 0.40),
                 ),
               ),
             const Spacer(),
-            Icon(etat.icone, size: 18, color: blancDoux),
+            Icon(etat.icone, size: 18, color: libre ? identite.tableLibre : blancDoux),
           ],
         ),
         const Spacer(),
-        Text(table.numero, style: AppTypo.chiffres(AppTypo.titre(Colors.white, taille: 38))),
+        Text(table.numero, style: AppTypo.chiffres(AppTypo.marque(texte, taille: 40, poids: FontWeight.w800))),
         const SizedBox(height: 2),
         AnimatedSwitcher(
           duration: duree(context, 300),
@@ -206,7 +233,14 @@ class _ContenuCarte extends StatelessWidget {
             ),
           ),
           child: s == null
-              ? Text('Libre', key: const ValueKey('libre'), style: AppTypo.etiquette(blancDoux, taille: 15))
+              ? Row(
+                  key: const ValueKey('libre'),
+                  children: [
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: identite.tableLibre, shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Text('Libre', style: AppTypo.etiquette(blancDoux, taille: 14)),
+                  ],
+                )
               : Column(
                   key: ValueKey('occ-${s.id}'),
                   crossAxisAlignment: CrossAxisAlignment.start,

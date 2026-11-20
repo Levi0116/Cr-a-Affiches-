@@ -153,7 +153,7 @@ class _EnTeteCaisse extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Caisse', style: AppTypo.titre(p.texte, taille: 26)),
+                      Text('Caisse', style: AppTypo.marque(p.texte, taille: 30)),
                       Text(
                         resto?.nom ?? '',
                         overflow: TextOverflow.ellipsis,

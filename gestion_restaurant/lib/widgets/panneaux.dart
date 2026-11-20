@@ -248,7 +248,7 @@ class EnTetePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(titre, style: AppTypo.titre(p.texte, taille: 26)),
+                Text(titre, style: AppTypo.marque(p.texte, taille: 32)),
                 if (description != null)
                   Text(description!, style: AppTypo.etiquette(p.texteSecondaire, taille: 14, poids: FontWeight.w500)),
               ],

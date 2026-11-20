@@ -136,7 +136,7 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
 
   String get _salutation {
     final h = DateTime.now().hour;
-    return h < 12 ? 'Bonjour' : (h < 18 ? 'Bon après-midi' : 'Bonsoir');
+    return h < 12 ? 'BONJOUR' : (h < 18 ? 'BON APRÈS-MIDI' : 'BONSOIR');
   }
 
   bool _compact = false;
@@ -147,91 +147,74 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
     final resto = ref.watch(restaurantProvider).value;
     _compact = MediaQuery.sizeOf(context).height < 900;
     final compactPin = _compact && _choisi != null;
-    return Scaffold(
-      backgroundColor: identite.nuit,
-      body: FondMotif(
-        couleurFond: identite.nuit,
-        opacite: 0.08,
-        child: SafeArea(
+    final large = MediaQuery.sizeOf(context).width >= 1000;
+    final contenu = employes.when(
+      loading: () => const CircularProgressIndicator(),
+      error: (e, _) => Text('Erreur : $e', style: const TextStyle(color: Colors.white)),
+      data: (liste) => AnimatedSwitcher(
+        duration: duree(context, 420),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, a) => FadeTransition(
+          opacity: a,
+          child: SlideTransition(
+            position: Tween(begin: const Offset(0.04, 0), end: Offset.zero).animate(a),
+            child: child,
+          ),
+        ),
+        child: _choisi == null ? _choixEmploye(liste.where((e) => e.actif).toList()) : _pave(_choisi!),
+      ),
+    );
+    final zone = Stack(
+      children: [
+        // Halo de braise derrière le contenu.
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.2),
+                radius: 1.1,
+                colors: [identite.principale.withValues(alpha: 0.10), identite.nuit.withValues(alpha: 0)],
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
           child: Column(
             children: [
               const Align(
                 alignment: Alignment.topRight,
-                child: Padding(padding: EdgeInsets.all(12), child: IndicateurConnexion()),
+                child: Padding(padding: EdgeInsets.all(14), child: IndicateurConnexion()),
               ),
+              if (!large && !compactPin) ...[
+                Hero(tag: 'logo', child: LogoResto(nom: resto?.nom ?? '', taille: _compact ? 96 : 120)),
+                const SizedBox(height: 12),
+                const TitreMarque(taille: 24),
+                const SizedBox(height: 18),
+              ],
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0, end: 1),
-                          duration: duree(context, 900),
-                          curve: Curves.elasticOut,
-                          builder: (_, v, c) => Transform.scale(scale: 0.4 + 0.6 * v, child: c),
-                          child: AnimatedSize(
-                            duration: duree(context, 300),
-                            child: compactPin
-                                ? const SizedBox.shrink()
-                                : DecoratedBox(
-                                    // Halo orange chaud derrière le logo.
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      boxShadow: AppOmbres.lueur(identite.principale, force: 1.4),
-                                    ),
-                                    child: Hero(
-                                      tag: 'logo',
-                                      child: LogoResto(
-                                        nom: resto?.nom ?? '',
-                                        taille: identite.logoAsset == null
-                                            ? (_compact ? 84 : 104)
-                                            : (_compact ? 150 : 190),
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        SizedBox(height: compactPin ? 0 : 12),
-                        // Le logo contient déjà le nom : on ne le répète pas.
-                        if (!compactPin && identite.logoAsset == null)
-                          Text(
-                            resto?.nom ?? '',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: identite.policeTitres,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 30,
-                              color: Colors.white,
-                            ),
-                          ),
-                        SizedBox(height: compactPin ? 0 : 24),
-                        employes.when(
-                          loading: () => const CircularProgressIndicator(),
-                          error: (e, _) => Text('Erreur : $e', style: const TextStyle(color: Colors.white)),
-                          data: (liste) => AnimatedSwitcher(
-                            duration: duree(context, 380),
-                            switchInCurve: Curves.easeOutCubic,
-                            switchOutCurve: Curves.easeInCubic,
-                            transitionBuilder: (child, a) => FadeTransition(
-                              opacity: a,
-                              child: ScaleTransition(scale: Tween(begin: 0.94, end: 1.0).animate(a), child: child),
-                            ),
-                            child: _choisi == null
-                                ? _choixEmploye(liste.where((e) => e.actif).toList())
-                                : _pave(_choisi!),
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: contenu,
                   ),
                 ),
               ),
             ],
           ),
         ),
-      ),
+      ],
+    );
+    return Scaffold(
+      backgroundColor: identite.nuit,
+      body: large
+          ? Row(
+              children: [
+                const Expanded(flex: 5, child: _PanneauMarque()),
+                Expanded(flex: 6, child: zone),
+              ],
+            )
+          : FondMotif(couleurFond: identite.nuit, couleurMotif: identite.or, opacite: 0.06, child: zone),
     );
   }
 
@@ -239,11 +222,10 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
     key: const ValueKey('choix'),
     mainAxisSize: MainAxisSize.min,
     children: [
-      Text(
-        '$_salutation ! Qui prend son poste ?',
-        style: TextStyle(color: identite.accent, fontSize: 18, fontWeight: FontWeight.w600),
-      ),
-      const SizedBox(height: 20),
+      Text(_salutation, style: AppTypo.surTitre(identite.or, taille: 13)),
+      const SizedBox(height: 6),
+      Text('Qui prend son poste ?', textAlign: TextAlign.center, style: AppTypo.marque(identite.texteSombre, taille: 34)),
+      const SizedBox(height: 26),
       Wrap(
         spacing: 14,
         runSpacing: 14,
@@ -268,15 +250,7 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
     children: [
       _Avatar(employe: e, taille: _compact ? 48 : 64),
       const SizedBox(height: 8),
-      Text(
-        e.nom,
-        style: TextStyle(
-          fontFamily: identite.policeTitres,
-          fontSize: 26,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-        ),
-      ),
+      Text(e.nom, style: AppTypo.marque(identite.texteSombre, taille: 30)),
       Text('Tapez votre code personnel puis ✓', style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
       const SizedBox(height: 18),
       ShakeWrapper(
@@ -429,43 +403,161 @@ class _CarteEmploye extends StatelessWidget {
   final Employe employe;
   const _CarteEmploye({required this.employe});
   @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    button: true,
-    label: '${employe.nom} ${employe.role.libelle}',
-    child: Container(
-      width: 168,
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(identite.arrondi),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
-      child: Column(
-        children: [
-          _Avatar(employe: employe),
-          const SizedBox(height: 10),
-          Text(
-            employe.nom,
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_iconeRole(employe.role), size: 15, color: _couleurRole(employe.role)),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  employe.role.libelle,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+  Widget build(BuildContext context) {
+    final c = _couleurRole(employe.role);
+    return Semantics(
+      container: true,
+      button: true,
+      label: '${employe.nom} ${employe.role.libelle}',
+      child: Container(
+        width: 176,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: identite.surfaceSombre,
+          borderRadius: BorderRadius.circular(identite.arrondi),
+          border: Border.all(color: identite.accent.withValues(alpha: 0.12)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 18, offset: const Offset(0, 8))],
+        ),
+        child: Column(
+          children: [
+            // Bandeau de couleur du rôle, avec un fragment du motif.
+            Container(
+              height: 46,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [c, Color.lerp(c, identite.nuit, 0.45)!]),
+              ),
+              child: CustomPaint(painter: MotifPainter(couleur: Colors.white, opacite: 0.16), size: const Size(176, 46)),
+            ),
+            Transform.translate(offset: const Offset(0, -26), child: _Avatar(employe: employe, taille: 58)),
+            Transform.translate(
+              offset: const Offset(0, -18),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Column(
+                  children: [
+                    Text(
+                      employe.nom,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypo.titre(identite.texteSombre, taille: 19, poids: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: c.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_iconeRole(employe.role), size: 14, color: Color.lerp(c, Colors.white, 0.35)),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              employe.role.libelle,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypo.etiquette(Color.lerp(c, Colors.white, 0.55)!, taille: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Panneau de marque (grand écran) : logo, nom, slogan, prestations.
+class _PanneauMarque extends StatelessWidget {
+  const _PanneauMarque();
+
+  @override
+  Widget build(BuildContext context) {
+    final prestations = [
+      (Icons.restaurant_menu_rounded, 'Cuisine ivoirienne'),
+      (Icons.outdoor_grill_rounded, 'Grillades'),
+      (Icons.local_bar_rounded, 'Boissons'),
+    ];
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [identite.secondaire, const Color(0xFF082A14), identite.nuit],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: FondMotif(couleurMotif: identite.or, opacite: 0.07, child: const SizedBox.expand())),
+          // Grand cercle de braise en arrière-plan.
+          Positioned(
+            right: -160,
+            top: -120,
+            child: Container(
+              width: 420,
+              height: 420,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [identite.principale.withValues(alpha: 0.30), identite.principale.withValues(alpha: 0)]),
+              ),
+            ),
           ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(48, 40, 48, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Spacer(),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: duree(context, 1100),
+                    curve: Curves.elasticOut,
+                    builder: (_, v, c) => Transform.scale(scale: 0.5 + 0.5 * v, alignment: Alignment.centerLeft, child: c),
+                    child: const Hero(tag: 'logo', child: LogoResto(nom: '', taille: 176)),
+                  ),
+                  const SizedBox(height: 28),
+                  StaggeredEntrance(index: 1, child: const TitreMarque(taille: 44, alignement: CrossAxisAlignment.start)),
+                  const SizedBox(height: 28),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (var i = 0; i < prestations.length; i++)
+                        StaggeredEntrance(
+                          index: i + 2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: identite.accent.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(color: identite.or.withValues(alpha: 0.35)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(prestations[i].$1, size: 18, color: identite.or),
+                                const SizedBox(width: 8),
+                                Text(prestations[i].$2, style: AppTypo.etiquette(identite.texteSombre, taille: 14)),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text('Espace équipe · ${identite.nomRestaurant}', style: AppTypo.etiquette(identite.texteSombre.withValues(alpha: 0.5), taille: 12)),
+                  const SizedBox(height: 14),
+                ],
+              ),
+            ),
+          ),
+          const Align(alignment: Alignment.bottomCenter, child: BandeKita(hauteur: 10)),
         ],
       ),
-    ),
-  );
+    );
+  }
 }

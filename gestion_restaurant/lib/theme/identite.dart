@@ -45,8 +45,14 @@ class IdentiteVisuelle {
   final Color tableAddition;
   final Color erreur;
 
+  /// Or chaud (dérivé de la crème du logo) : liserés, motif, distinctions.
+  final Color or;
+
   // --- Typographie -------------------------------------------------------------
-  /// Titres, numéros de table, montants.
+  /// Police de marque (titres d'écran, nom, slogan) : serif chaleureuse.
+  final String policeMarque;
+
+  /// Titres d'interface, numéros de table, montants.
   final String policeTitres;
 
   /// Interface et texte courant.
@@ -55,6 +61,11 @@ class IdentiteVisuelle {
   // --- Formes, logo, motif, animations -------------------------------------------
   final double arrondi;
   final String? logoAsset;
+
+  // --- Textes de marque --------------------------------------------------------
+  final String nomRestaurant;
+  final String slogan;
+  final String prestations;
   final bool motif;
 
   /// 1.0 = vitesse normale ; 0 = aucune animation. Le réglage d'accessibilité
@@ -76,35 +87,48 @@ class IdentiteVisuelle {
     required this.tableOccupee,
     required this.tableAddition,
     required this.erreur,
+    required this.or,
+    required this.policeMarque,
     required this.policeTitres,
     required this.policeTexte,
     this.arrondi = 20,
     this.logoAsset,
+    this.nomRestaurant = 'Restaurant',
+    this.slogan = '',
+    this.prestations = '',
     this.motif = true,
     this.vitesseAnimations = 1,
   });
 }
 
-/// Identité active : Restaurant Chez les Amani.
+/// Identité active : Restaurant Chez les Amani — « Signature Amani ».
+///
+/// Couleurs du logo (orange, vert forêt, crème) déclinées en deux ambiances :
+/// nuit de forêt (service en salle) et sable chaud (caisse, gestion).
 const identite = IdentiteVisuelle(
-  principale: Color(0xFFF55A0A), // orange cloche
-  secondaire: Color(0xFF0B3A1C), // vert forêt
-  accent: Color(0xFFFFE2AE), // crème dorée
-  fond: Color(0xFFFBF7EF), // crème très pâle
-  surface: Color(0xFFFFFFFF),
-  texte: Color(0xFF13241A),
-  nuit: Color(0xFF0B1510), // obsidienne verte
-  surfaceSombre: Color(0xFF122019),
-  surfaceSombreElevee: Color(0xFF1A2B22),
-  texteSombre: Color(0xFFF2F5EF),
-  tableLibre: Color(0xFF059669), // émeraude
-  tableOccupee: Color(0xFFD97706), // ambre chaud
-  tableAddition: Color(0xFF2563EB), // bleu électrique
+  principale: Color(0xFFF55A0A), // orange braise (logo)
+  secondaire: Color(0xFF0B3A1C), // vert forêt (logo)
+  accent: Color(0xFFFFE2AE), // crème (logo)
+  or: Color(0xFFE5A53A), // or chaud
+  fond: Color(0xFFF6EEDF), // sable
+  surface: Color(0xFFFFFCF6), // ivoire
+  texte: Color(0xFF13281B), // vert presque noir
+  nuit: Color(0xFF06170D), // nuit de forêt
+  surfaceSombre: Color(0xFF0C2516),
+  surfaceSombreElevee: Color(0xFF133320),
+  texteSombre: Color(0xFFFFF4DF), // crème
+  tableLibre: Color(0xFF16A34A), // vert feuille
+  tableOccupee: Color(0xFFE39A0E), // ocre doré
+  tableAddition: Color(0xFF3B7BF2), // bleu
   erreur: Color(0xFFE5484D),
+  policeMarque: 'Fraunces',
   policeTitres: 'PlusJakartaSans',
   policeTexte: 'Inter',
-  arrondi: 20,
+  arrondi: 22,
   logoAsset: 'assets/images/logo_amani.png',
+  nomRestaurant: 'Restaurant Chez les Amani',
+  slogan: 'Le goût de l’Afrique, la signature AMANI',
+  prestations: 'Cuisine ivoirienne · Grillades · Boissons',
   motif: true,
   vitesseAnimations: 1,
 );

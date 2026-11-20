@@ -12,9 +12,11 @@ IconData iconeCategorie(String nom) {
   if (n.contains('sucrerie') || n.contains('soda') || n.contains('jus') || n.contains('boisson')) {
     return Icons.local_drink_rounded;
   }
+  if (n.contains('locale') || n.contains('bissap') || n.contains('jus')) return Icons.emoji_food_beverage_rounded;
+  if (n.contains('accompagnement')) return Icons.rice_bowl_rounded;
   if (n.contains('eau')) return Icons.water_drop_rounded;
   if (n.contains('grill') || n.contains('brochette') || n.contains('braise')) return Icons.outdoor_grill_rounded;
-  if (n.contains('plat') || n.contains('cuisine') || n.contains('repas')) return Icons.restaurant_rounded;
+  if (n.contains('plat') || n.contains('cuisine') || n.contains('repas') || n.contains('ivoir')) return Icons.ramen_dining_rounded;
   if (n.contains('cigarette') || n.contains('tabac')) return Icons.smoking_rooms_rounded;
   if (n.contains('dessert') || n.contains('glace')) return Icons.icecream_rounded;
   if (n.contains('café') || n.contains('cafe') || n.contains('thé')) return Icons.coffee_rounded;
