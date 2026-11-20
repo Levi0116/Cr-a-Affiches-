@@ -8,8 +8,10 @@ const pool = creerPool(cfg.mysql);
 await migrer(pool);
 await publierVersion(pool, cfg.version);
 const app = creerApp(pool, cfg);
-const serveur = app.listen(cfg.port, '127.0.0.1', () => {
-  console.log(`Serveur Amani prêt sur http://127.0.0.1:${cfg.port}`);
+// HOTE=127.0.0.1 en production (derrière Nginx) ; 0.0.0.0 pour un test sur le Wi-Fi local.
+const hote = process.env.HOTE ?? '127.0.0.1';
+const serveur = app.listen(cfg.port, hote, () => {
+  console.log(`Serveur Amani prêt sur http://${hote === '0.0.0.0' ? 'localhost' : hote}:${cfg.port}`);
 });
 // Les appareils en écoute (long polling) gardent la connexion jusqu'à 25 s.
 serveur.keepAliveTimeout = 65_000;

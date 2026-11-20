@@ -21,10 +21,14 @@ apt-get upgrade -yq
 apt-get install -yq curl ca-certificates gnupg ufw fail2ban unattended-upgrades nginx mysql-server certbot python3-certbot-nginx
 
 echo "== 2/8 Pare-feu : seuls SSH, HTTP et HTTPS sont ouverts"
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw --force enable
-systemctl enable --now fail2ban
+# Certains VPS d'entrée de gamme (conteneurs LXC) n'autorisent pas ufw :
+# on continue alors, et on utilise le pare-feu du panneau de l'hébergeur.
+if ufw allow OpenSSH && ufw allow 'Nginx Full' && ufw --force enable; then
+  echo "Pare-feu actif."
+else
+  echo "ATTENTION : pare-feu ufw indisponible sur ce VPS. Activez le pare-feu de l'espace client (ports 22, 80, 443)."
+fi
+systemctl enable --now fail2ban || echo "ATTENTION : fail2ban indisponible sur ce VPS."
 dpkg-reconfigure -f noninteractive unattended-upgrades
 
 echo "== 3/8 Node.js 22 et PM2"
