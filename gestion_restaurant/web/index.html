@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Restaurant Chez les Amani — Le goût de l’Afrique, la signature AMANI.">
+  <meta name="theme-color" content="#0B3A1C">
+  <meta name="color-scheme" content="dark light">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chez les Amani">
+  <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Restaurant Chez les Amani</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #06170D; }
+    /* Écran d'attente aux couleurs du restaurant (avant le chargement de l'application). */
+    #demarrage {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; background: radial-gradient(circle at 50% 40%, #0B3A1C 0%, #06170D 70%);
+      color: #FFE2AE; font-family: Georgia, 'Times New Roman', serif; transition: opacity .5s ease; z-index: 10;
+    }
+    #demarrage.fini { opacity: 0; pointer-events: none; }
+    #demarrage img { width: 132px; height: 132px; border-radius: 50%; box-shadow: 0 0 60px rgba(245, 90, 10, .45); animation: souffle 1.8s ease-in-out infinite; }
+    #demarrage .nom { font-size: 24px; font-weight: 700; color: #FFF4DF; }
+    #demarrage .slogan { font-size: 15px; font-style: italic; color: #E5A53A; }
+    #demarrage .barre { width: 160px; height: 3px; border-radius: 3px; background: rgba(255, 226, 174, .15); overflow: hidden; }
+    #demarrage .barre::after { content: ''; display: block; width: 40%; height: 100%; background: #F55A0A; animation: charge 1.2s ease-in-out infinite; }
+    @keyframes souffle { 50% { transform: scale(1.05); } }
+    @keyframes charge { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+    @media (prefers-reduced-motion: reduce) { #demarrage img, #demarrage .barre::after { animation: none; } }
+  </style>
+</head>
+<body>
+  <div id="demarrage" aria-label="Chargement">
+    <img src="icones/Icon-192.png" alt="">
+    <div class="nom">Restaurant Chez les Amani</div>
+    <div class="slogan">Le goût de l’Afrique, la signature AMANI</div>
+    <div class="barre"></div>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
