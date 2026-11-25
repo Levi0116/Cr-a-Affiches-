@@ -19,7 +19,8 @@ Seules **3 valeurs** sont à remplacer dans les commandes : l'**adresse IP** du 
 1. Connectez-vous sur <https://panel.lws.fr>.
 2. **Commander** → **Serveurs VPS** → **VPS Linux**.
 3. Choisissez :
-   - **Modèle : LC2** (conseillé, environ 5,99 € HT par mois) ou **LC1** (environ 2,99 € HT par mois, suffisant pour démarrer) ;
+   - **Offre : VPS M** (4 cœurs, 8 Go, 150 Go NVMe ; 4,99 € HT / 5,99 € TTC par mois en promotion — lisez la condition liée à l'astérisque * : prix de renouvellement et durée d'engagement) ;
+   - **Gestion : accès root** (pas « Infogéré ») ;
    - **Système : Ubuntu 24.04** ;
    - **Emplacement : France**.
 4. Payez. LWS envoie un e-mail quand le VPS est prêt (en général en quelques minutes).
