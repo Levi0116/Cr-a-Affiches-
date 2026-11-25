@@ -328,16 +328,113 @@ Pour chaque tablette :
 
 ## Mettre à jour (quand je vous fournis de nouveaux paquets)
 
-**Serveur** : envoi (étape 5), puis dans SSH :
+Les nouveaux paquets sont toujours publiés **aux mêmes adresses**. Faites la mise à jour le matin, hors service, **le serveur d'abord**.
+
+**1. Serveur (alwaysdata)** : dans le terminal SSH (« par le Web » ou PowerShell), copiez-collez :
 
 ```bash
-tar -xzf amani-serveur-alwaysdata.tar.gz
-cd ~/amani-serveur && npm run migrer
+cd ~ && curl -L -o amani-serveur-alwaysdata.tar.gz https://raw.githubusercontent.com/Levi0116/Cr-a-Affiches-/ccr-7324c1b1-dnzjuz/gestion_restaurant/livraison/amani-serveur-alwaysdata.tar.gz && tar -xzf amani-serveur-alwaysdata.tar.gz && cd amani-serveur && npm run migrer
 ```
 
-Puis interface alwaysdata → **Web → Sites** → **Redémarrer**. Le fichier `.env` (vos réglages) n'est jamais écrasé.
+Puis interface alwaysdata → **Web → Sites** → icône **Redémarrer**. Vérifiez <https://chezamani.alwaysdata.net/api/sante>. Vos réglages (`.env`) et vos données ne sont jamais touchés.
 
-**Application** : extraire le nouveau zip, **remettre votre `config.json`** (ou refaire l'étape 11), puis envoyer avec FileZilla en remplaçant les fichiers (étape 12).
+**2. Application (LWS)** :
+
+1. Téléchargez <https://raw.githubusercontent.com/Levi0116/Cr-a-Affiches-/ccr-7324c1b1-dnzjuz/gestion_restaurant/livraison/amani-front-lws.zip>. Son `config.json` est déjà réglé sur `chezamani.alwaysdata.net`.
+2. Gestionnaire de fichiers LWS → dossier du site → envoyez le zip → **Décompresser**, en remplaçant les fichiers existants. Supprimez ensuite le zip.
+
+**3. Appareils** : ils prennent la nouvelle version à la réouverture de l'application. Si l'ancienne s'affiche encore, fermez-la complètement et rouvrez-la, deux fois si besoin.
+
+## Installer l'application en plein écran (téléphone et PC)
+
+L'application s'installe comme une vraie application : icône du restaurant, **sans barre d'adresse ni onglets**, et écran de démarrage avec le logo.
+
+- **Téléphone Android** :
+  1. Ouvrez **Chrome** → `https://restaurant-chez-amani.com`.
+  2. Menu **⋮** → **Installer l'application** (choisissez « Installer », pas « Créer un raccourci »).
+- **PC (Chrome ou Edge)** : icône **Installer** à droite de la barre d'adresse, ou menu **⋮ → Caster, enregistrer et partager → Installer la page en tant qu'application**.
+
+Si Chrome affiche « Impossible d'installer cette appli » :
+
+1. Vérifiez que le dossier **`icones`** est bien présent dans le dossier du site chez LWS, avec ses 5 images. `https://restaurant-chez-amani.com/icones/Icon-192.png` doit afficher le logo.
+2. Supprimez l'ancien raccourci de l'écran d'accueil, fermez Chrome, puis rouvrez l'adresse.
+
+## Lier les appareils et choisir leur poste
+
+Chaque appareil a un **poste** : serveuse, caissier, gestionnaire de stock et/ou administrateur. **L'accueil de l'appareil n'affiche que les comptes de ce poste**, et le serveur refuse tout autre compte, même avec le bon code.
+
+1. **Premier appareil (téléphone du patron)** :
+   - créez un code dans le terminal SSH :
+
+     ```bash
+     cd ~/amani-serveur && npm run code-liaison -- --id chez-amani
+     ```
+
+   - ouvrez l'application installée et tapez le code. Ce téléphone a le poste **Administrateur**.
+2. **Autres appareils** : sur le téléphone du patron, **Administration → Appareils → Lier un appareil**.
+   - Choisissez le **type** (Tablette, Caisse, Téléphone) et le **poste**. Par défaut :
+     - tablette → **Serveuse** ;
+     - caisse → **Caissier**.
+
+     Cochez plusieurs postes si besoin, par exemple **Caissier + Administrateur** sur l'ordinateur de caisse.
+   - Sur le nouvel appareil : ouvrez l'application → **Scanner le QR code** (ou tapez le code).
+3. **Appareil perdu** : **Administration → Appareils → Retirer**.
+
+Les appareils liés avant cette version affichent encore tous les comptes : retirez-les et liez-les à nouveau pour leur donner un poste, ou faites une remise à zéro (ci-dessous).
+
+## Rapport complet en PDF
+
+**Administration → Rapports → Rapport complet (PDF)**, puis choisissez **la période affichée** ou **tout l'historique**. Le fichier PDF est enregistré dans les **Téléchargements** de l'appareil (ordinateur de caisse ou téléphone du patron).
+
+Il contient tout :
+
+- la synthèse ;
+- le service des serveuses (tables, couverts, factures, chiffre d'affaires, annulations) ;
+- les ventes par article et par catégorie ;
+- les factures avec le détail des articles ;
+- la caisse (ouvertures, clôtures, écarts, encaissements) ;
+- les ardoises, avoirs et dépenses ;
+- le stock (état, mouvements, livraisons) ;
+- les validations et le journal d'audit ;
+- le menu, les tables, les comptes de l'équipe et les appareils. Les codes ne figurent jamais dans le rapport.
+
+Il est fabriqué à partir de la copie des données présente sur l'appareil : il fonctionne même sans internet.
+
+## Remettre TOUT à zéro (données, comptes, appareils, codes)
+
+⚠️ **Irréversible.** Téléchargez d'abord le rapport complet PDF (« Tout l'historique ») si vous voulez garder une trace.
+
+Dans le terminal SSH alwaysdata :
+
+```bash
+cd ~/amani-serveur && npm run reinitialiser -- --id chez-amani
+```
+
+Tapez **`EFFACER`** pour confirmer. Puis recréez le restaurant et votre compte administrateur (étape 7) :
+
+```bash
+npm run creer-restaurant -- --id chez-amani --nom "Restaurant Chez les Amani" --admin "Patron" --pin VOTRECODE --telephone "+226 65 91 11 76"
+```
+
+Les appareils déjà liés reviennent tout seuls à l'écran « Lier cet appareil » et effacent leur copie des données. Il ne reste plus qu'à les lier à nouveau.
+
+## Espace de stockage (1 Go sur l'offre gratuite alwaysdata)
+
+**Combien prennent les données ?** Très peu : environ 1 à 2 Ko par facture. Un restaurant qui fait 300 factures par jour utilise de l'ordre de 200 Mo par an. Le serveur fait aussi le ménage tout seul (anciens accusés de synchronisation, codes expirés).
+
+**Vérifier l'espace utilisé** : dans le terminal SSH,
+
+```bash
+cd ~/amani-serveur && npm run espace
+```
+
+Comparez aussi avec le menu **Consommation** de l'interface alwaysdata.
+
+**Si l'espace devient insuffisant**, trois solutions, de la plus simple à la plus économique :
+
+1. **Passer à une offre payante alwaysdata** (plus d'espace) : rien à réinstaller, tout continue.
+2. **Déplacer seulement la base** vers une base compatible MySQL gratuite plus grande, par exemple **TiDB Cloud** (5 Go gratuits). On change 4 lignes du fichier `.env` (adresse, base, utilisateur, mot de passe) et on ajoute `MYSQL_SSL=true`. Je vous accompagnerai pour le transfert des données.
+3. **Archiver puis repartir à zéro** une fois par an : téléchargez le rapport complet PDF « Tout l'historique » (et une sauvegarde de la base, voir plus haut), puis faites la remise à zéro.
 
 ## Limites de l'offre gratuite alwaysdata
 

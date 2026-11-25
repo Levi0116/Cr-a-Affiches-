@@ -245,7 +245,9 @@ class Appareil {
   final bool admin;
   final bool actif;
   final DateTime? lieLe;
+  final Set<Role>? postes;
   const Appareil({
+    this.postes,
     required this.uid,
     required this.nom,
     required this.type,
@@ -262,6 +264,7 @@ class Appareil {
       type: TypeAppareil.values.asNameMap()[m['type']] ?? TypeAppareil.tablette,
       admin: m['admin'] as bool? ?? false,
       actif: m['revoque'] != true && m['actif'] != false,
+      postes: lirePostes(m['roles']),
       lieLe: l is Timestamp ? l.toDate() : (l is DateTime ? l : null),
     );
   }

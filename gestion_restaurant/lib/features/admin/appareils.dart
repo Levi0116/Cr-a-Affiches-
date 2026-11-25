@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/format.dart';
+import '../../models/modeles.dart';
 import '../../services/serveur_appareils.dart';
 import '../../state/providers.dart';
 import '../../theme/animated_widgets.dart';
@@ -70,6 +71,15 @@ class PageAppareils extends ConsumerWidget {
     final nom = TextEditingController();
     var type = TypeAppareil.tablette;
     var admin = false;
+    // Poste de l'appareil : seuls ces comptes pourront s'y connecter.
+    var postes = <Role>{Role.serveuse};
+    Set<Role> parDefaut(TypeAppareil t, bool adm) => adm
+        ? {Role.admin}
+        : switch (t) {
+            TypeAppareil.tablette => {Role.serveuse},
+            TypeAppareil.caisse => {Role.caissier},
+            TypeAppareil.telephone => {Role.serveuse},
+          };
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -106,7 +116,11 @@ class PageAppareils extends ConsumerWidget {
                     ),
                   ],
                   selected: {type},
-                  onSelectionChanged: (v) => setState(() => type = v.first),
+                  onSelectionChanged: (v) => setState(() {
+                    type = v.first;
+                    if (type != TypeAppareil.telephone) admin = false;
+                    postes = parDefaut(type, admin);
+                  }),
                 ),
                 if (type == TypeAppareil.telephone)
                   SwitchListTile(
@@ -114,8 +128,32 @@ class PageAppareils extends ConsumerWidget {
                     title: const Text('Téléphone du gérant'),
                     subtitle: const Text('Droits administrateur permanents et notifications'),
                     value: admin,
-                    onChanged: (v) => setState(() => admin = v),
+                    onChanged: (v) => setState(() {
+                      admin = v;
+                      postes = parDefaut(type, admin);
+                    }),
                   ),
+                const SizedBox(height: 12),
+                Text('Poste de l’appareil', style: AppTypo.etiquette(context.pal.texte, taille: 14, poids: FontWeight.w700)),
+                Text(
+                  'Seuls les comptes de ces postes apparaîtront et pourront se connecter sur cet appareil.',
+                  style: AppTypo.etiquette(context.pal.texteSecondaire, taille: 12, poids: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final r in Role.values)
+                      FilterChip(
+                        label: Text(r.libelle),
+                        selected: postes.contains(r),
+                        onSelected: (r == Role.admin && admin)
+                            ? null
+                            : (v) => setState(() => v ? postes.add(r) : postes.remove(r)),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -127,9 +165,13 @@ class PageAppareils extends ConsumerWidget {
       ),
     );
     if (ok != true || !context.mounted) return;
+    if (postes.isEmpty) {
+      afficherMessage(context, 'Choisissez au moins un poste pour cet appareil', erreur: true);
+      return;
+    }
     final code = await essayer(
       context,
-      () => ref.read(serveurAppareilsProvider).creerCode(nom: nom.text, type: type, admin: admin),
+      () => ref.read(serveurAppareilsProvider).creerCode(nom: nom.text, type: type, admin: admin, postes: postes),
     );
     if (code == null || !context.mounted) return;
     await showDialog<void>(
@@ -188,7 +230,8 @@ class _CarteAppareil extends StatelessWidget {
                 children: [
                   Text(a.nom, style: AppTypo.etiquette(p.texte, taille: 16, poids: FontWeight.w700)),
                   Text(
-                    '${a.type.libelle}${a.admin ? ' · administrateur' : ''}',
+                    '${a.type.libelle}${a.admin ? ' · administrateur' : ''}'
+                    '${a.postes == null ? ' · tous les postes' : ' · poste : ${a.postes!.map((r) => r.libelle).join(', ')}'}',
                     style: AppTypo.etiquette(p.texteSecondaire, taille: 13, poids: FontWeight.w500),
                   ),
                   const SizedBox(height: 6),

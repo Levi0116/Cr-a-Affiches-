@@ -4,6 +4,7 @@
 #   dist/amani-serveur-alwaysdata.tar.gz → à déposer chez alwaysdata
 set -euo pipefail
 cd "$(dirname "$0")/.."
+rm -rf build/web
 flutter build web --release --no-web-resources-cdn --dart-define=SERVEUR=true
 cp hebergement/lws/config.json hebergement/lws/.htaccess build/web/
 node outils/generer-sw.mjs

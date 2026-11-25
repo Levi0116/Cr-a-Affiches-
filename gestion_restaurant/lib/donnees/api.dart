@@ -96,8 +96,8 @@ class Api {
   Future<Map<String, dynamic>> modifierEmploye(String id, Map<String, Object?> champs) => appel('PATCH', 'employes/$id', corps: champs);
   Future<Map<String, dynamic>> supprimerEmploye(String id) => appel('DELETE', 'employes/$id');
 
-  Future<Map<String, dynamic>> creerCodeLiaison({required String type, required String nom, bool admin = false}) =>
-      appel('POST', 'appareils/codes', corps: {'type': type, 'nom': nom, 'admin': admin});
+  Future<Map<String, dynamic>> creerCodeLiaison({required String type, required String nom, bool admin = false, List<String>? roles}) =>
+      appel('POST', 'appareils/codes', corps: {'type': type, 'nom': nom, 'admin': admin, 'roles': ?roles});
   Future<Map<String, dynamic>> retirerAppareil(String id) => appel('DELETE', 'appareils/$id');
 
   Future<Map<String, dynamic>> pull(int depuis) => appel('GET', 'sync/pull?depuis=$depuis', delai: const Duration(seconds: 60));

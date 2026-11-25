@@ -148,6 +148,8 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
     _compact = MediaQuery.sizeOf(context).height < 900;
     final compactPin = _compact && _choisi != null;
     final large = MediaQuery.sizeOf(context).width >= 1000;
+    // Poste de l'appareil : seuls les comptes de ce poste sont proposés.
+    final postes = ref.watch(serveurAppareilsProvider).postes;
     final contenu = employes.when(
       loading: () => const CircularProgressIndicator(),
       error: (e, _) => Text('Erreur : $e', style: const TextStyle(color: Colors.white)),
@@ -162,7 +164,12 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
             child: child,
           ),
         ),
-        child: _choisi == null ? _choixEmploye(liste.where((e) => e.actif).toList()) : _pave(_choisi!),
+        child: _choisi == null
+            ? _choixEmploye(
+                liste.where((e) => e.actif && (postes == null || postes.contains(e.role))).toList(),
+                postes,
+              )
+            : _pave(_choisi!),
       ),
     );
     final zone = Stack(
@@ -218,14 +225,35 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
     );
   }
 
-  Widget _choixEmploye(List<Employe> actifs) => Column(
+  Widget _choixEmploye(List<Employe> actifs, Set<Role>? postes) => Column(
     key: const ValueKey('choix'),
     mainAxisSize: MainAxisSize.min,
     children: [
       Text(_salutation, style: AppTypo.surTitre(identite.or, taille: 13)),
       const SizedBox(height: 6),
       Text('Qui prend son poste ?', textAlign: TextAlign.center, style: AppTypo.marque(identite.texteSombre, taille: 34)),
+      if (postes != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: identite.or.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: identite.or.withValues(alpha: 0.4)),
+          ),
+          child: Text(
+            'Poste de cet appareil : ${postes.map((r) => r.libelle).join(' · ')}',
+            style: AppTypo.etiquette(identite.or, taille: 13),
+          ),
+        ),
+      ],
       const SizedBox(height: 26),
+      if (actifs.isEmpty)
+        Text(
+          'Aucun compte pour ce poste.\nL’administrateur crée les comptes dans Administration → Comptes de l’équipe.',
+          textAlign: TextAlign.center,
+          style: AppTypo.etiquette(identite.texteSombre.withValues(alpha: 0.7), taille: 15, poids: FontWeight.w500),
+        ),
       Wrap(
         spacing: 14,
         runSpacing: 14,

@@ -8,6 +8,7 @@ import '../../models/modeles.dart';
 import '../../services/export_rapport.dart';
 import '../../services/impression/impression.dart';
 import '../../services/impression/telechargement.dart';
+import '../../services/rapport_complet.dart';
 import '../../state/providers.dart';
 import '../../theme/animated_widgets.dart';
 import '../../theme/identite.dart';
@@ -73,6 +74,54 @@ class _EcranRapportsState extends ConsumerState<EcranRapports> {
 
   Periode get _periode => Periode.contenant(_type, _date);
 
+  /// Rapport complet (toutes les données) en PDF, enregistré sur l'appareil.
+  Future<void> _rapportComplet(BuildContext context) async {
+    final p = _periode;
+    final choix = await showDialog<PeriodeRapport>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Rapport complet (PDF)'),
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text(
+              'Toutes les données : serveuses, factures, caisse, stock, ardoises, avoirs, dépenses, validations, journal, menu, comptes et appareils. Le fichier est enregistré dans les Téléchargements de cet appareil.',
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, PeriodeRapport(libellePeriode(p), p.debut, p.fin)),
+            child: ListTile(leading: const Icon(Icons.date_range_rounded), title: Text(libellePeriode(p)), subtitle: const Text('Période affichée')),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, const PeriodeRapport('Tout l’historique', null, null)),
+            child: const ListTile(leading: Icon(Icons.all_inclusive_rounded), title: Text('Tout l’historique'), subtitle: Text('Depuis la mise en service')),
+          ),
+        ],
+      ),
+    );
+    if (choix == null || !context.mounted) return;
+    final nav = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(children: [CircularProgressIndicator(), SizedBox(width: 18), Expanded(child: Text('Préparation du rapport…'))]),
+      ),
+    );
+    try {
+      final octets = await rapportCompletPdf(ref.read(dbProvider), choix, genereePar: ref.read(utilisateurProvider)?.nom ?? '');
+      nav.pop();
+      final suffixe = choix.debut == null ? 'historique' : dateJour(choix.debut!);
+      final ok = await telecharger('rapport-complet-chez-amani-$suffixe.pdf', octets, 'application/pdf');
+      if (context.mounted) {
+        afficherMessage(context, ok ? 'Rapport enregistré dans les Téléchargements' : 'Téléchargement impossible sur cet appareil', erreur: !ok);
+      }
+    } catch (e) {
+      nav.pop();
+      if (context.mounted) afficherMessage(context, 'Rapport impossible : $e', erreur: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cle = (type: _type, debut: _periode.debut);
@@ -120,6 +169,11 @@ class _EcranRapportsState extends ConsumerState<EcranRapports> {
                 tooltip: 'Actualiser',
                 icon: const Icon(Icons.refresh),
                 onPressed: () => ref.invalidate(rapportProvider(cle)),
+              ),
+              FilledButton.icon(
+                icon: const Icon(Icons.summarize_rounded),
+                label: const Text('Rapport complet (PDF)'),
+                onPressed: () => _rapportComplet(context),
               ),
               if (async.hasValue && resto != null) ...[
                 OutlinedButton.icon(

@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { exigerAdminEnLigne, exigerAppareil } from '../auth.js';
+import { exigerAdminEnLigne, exigerAppareil, lireRoles } from '../auth.js';
 import { transaction } from '../bd.js';
 import { lireDoc, lireDocs } from '../documents.js';
 import {
@@ -17,6 +17,9 @@ import { horodatage } from '../valeurs.js';
 
 const ROLES = ['serveuse', 'caissier', 'gestionnaire', 'admin'];
 const TYPES = ['tablette', 'caisse', 'telephone'];
+const LIBELLES_ROLES = { serveuse: 'serveuse', caissier: 'caissier', gestionnaire: 'gestionnaire de stock', admin: 'administrateur' };
+/** Poste par défaut selon le type d'appareil. */
+const rolesParDefaut = (type, admin) => (admin ? ['admin'] : { tablette: ['serveuse'], caisse: ['caissier'], telephone: ['serveuse'] }[type] ?? []);
 const texte = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 export function routesComptes(pool, cfg) {
@@ -41,19 +44,19 @@ export function routesComptes(pool, cfg) {
       const id = crypto.randomUUID();
       await cx.query('UPDATE codes_liaison SET utilise = 1 WHERE code = ?', [code]);
       await cx.query(
-        'INSERT INTO appareils (id, restaurant_id, nom, type, admin, jeton_empreinte) VALUES (?, ?, ?, ?, ?, ?)',
-        [id, c[0].restaurant_id, c[0].nom, c[0].type, c[0].admin, empreinte(jeton)],
+        'INSERT INTO appareils (id, restaurant_id, nom, type, admin, jeton_empreinte, roles) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id, c[0].restaurant_id, c[0].nom, c[0].type, c[0].admin, empreinte(jeton), c[0].roles ?? ''],
       );
       const [[resto]] = await cx.query('SELECT nom FROM restaurants WHERE id = ?', [c[0].restaurant_id]);
-      return { id, rid: c[0].restaurant_id, nom: c[0].nom, type: c[0].type, admin: !!c[0].admin, nomResto: resto.nom };
+      return { id, rid: c[0].restaurant_id, nom: c[0].nom, type: c[0].type, admin: !!c[0].admin, roles: lireRoles(c[0].roles), nomResto: resto.nom };
     });
     await ecrireServeur(pool, lien.rid, [
-      { chemin: `appareils/${lien.id}`, donnees: { nom: lien.nom, type: lien.type, admin: lien.admin, revoque: false, lieLe: horodatage() } },
+      { chemin: `appareils/${lien.id}`, donnees: { nom: lien.nom, type: lien.type, admin: lien.admin, roles: lien.roles, revoque: false, lieLe: horodatage() } },
       audit(lien.rid, 'serveur', 'liaison_appareil', `${lien.nom} (${lien.type})`),
     ]);
     res.json({
       jeton,
-      appareil: { id: lien.id, nom: lien.nom, type: lien.type, admin: lien.admin },
+      appareil: { id: lien.id, nom: lien.nom, type: lien.type, admin: lien.admin, roles: lien.roles },
       restaurant: { id: lien.rid, nom: lien.nomResto },
     });
   });
@@ -70,6 +73,11 @@ export function routesComptes(pool, cfg) {
     const pin = texte(req.body?.pin, 12);
     const employe = id ? await lireDoc(pool, rid, `employes/${id}`) : null;
     if (!employe || employe.actif === false || employe.supprime === true) throw new ErreurApi(400, 'Employé inconnu ou désactivé.');
+    // Poste de l'appareil : seuls les comptes de ce poste peuvent s'y connecter.
+    if (req.appareil.roles.length && !req.appareil.roles.includes(employe.role)) {
+      const postes = req.appareil.roles.map((r) => LIBELLES_ROLES[r] ?? r).join(', ');
+      throw new ErreurApi(403, `Ce compte ne peut pas se connecter sur cet appareil (poste : ${postes}).`, 'poste_refuse');
+    }
     const [[essai]] = await pool.query('SELECT echecs, bloque_jusqua FROM essais_pin WHERE restaurant_id = ? AND employe_id = ?', [rid, id]);
     if (essai?.bloque_jusqua && new Date(essai.bloque_jusqua) > new Date()) {
       const min = Math.ceil((new Date(essai.bloque_jusqua) - new Date()) / 60_000);
@@ -194,10 +202,15 @@ export function routesComptes(pool, cfg) {
     const type = TYPES.includes(req.body?.type) ? req.body.type : 'tablette';
     const nom = texte(req.body?.nom, 60) || { tablette: 'Tablette', caisse: 'Caisse', telephone: 'Téléphone' }[type];
     const estAdmin = req.body?.admin === true && type === 'telephone';
+    let roles = Array.isArray(req.body?.roles) ? [...new Set(req.body.roles.filter((r) => ROLES.includes(r)))] : rolesParDefaut(type, estAdmin);
+    if (estAdmin && !roles.includes('admin')) roles = ['admin', ...roles];
+    if (!roles.length) throw new ErreurApi(400, 'Choisissez au moins un poste pour cet appareil.');
     const code = nouveauCode();
     const expire = new Date(Date.now() + DUREE_CODE_MIN * 60_000);
-    await pool.query('INSERT INTO codes_liaison (code, restaurant_id, nom, type, admin, expire) VALUES (?, ?, ?, ?, ?, ?)', [code, rid, nom, type, estAdmin, expire]);
-    res.status(201).json({ code, expire: expire.toISOString(), nom, type, admin: estAdmin });
+    await pool.query('INSERT INTO codes_liaison (code, restaurant_id, nom, type, admin, expire, roles) VALUES (?, ?, ?, ?, ?, ?, ?)', [
+      code, rid, nom, type, estAdmin, expire, roles.join(','),
+    ]);
+    res.status(201).json({ code, expire: expire.toISOString(), nom, type, admin: estAdmin, roles });
   });
 
   r.delete('/appareils/:id', appareil, admin, async (req, res) => {

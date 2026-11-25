@@ -5,14 +5,18 @@
   "description": "Serveur Node.js + MySQL de la plateforme Restaurant Chez les Amani (API, synchronisation hors ligne, PWA)",
   "type": "module",
   "main": "src/index.js",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
     "migrer": "node scripts/migrer.js",
     "creer-restaurant": "node scripts/creer-restaurant.js",
     "code-liaison": "node scripts/code-liaison.js",
     "configurer": "node scripts/configurer.js",
-    "test": "node --test --test-concurrency=1 test/serveur.test.js"
+    "test": "node --test --test-concurrency=1 test/serveur.test.js",
+    "reinitialiser": "node scripts/reinitialiser.js",
+    "espace": "node scripts/espace.js"
   },
   "dependencies": {
     "compression": "^1.8.1",

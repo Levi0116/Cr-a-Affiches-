@@ -195,6 +195,24 @@ describe('API', () => {
     assert.equal(lecture.entetes.get('access-control-allow-origin'), null);
   });
 
+  test('poste de l’appareil : seuls les comptes de ce poste peuvent s’y connecter', async () => {
+    const session = (await t.connecter(caisse.jeton, t.idAdmin, PIN_ADMIN)).corps.session;
+    const code = await t.appel('POST', '/appareils/codes', { jeton: caisse.jeton, session, corps: { type: 'tablette', nom: 'Tablette Salle' } });
+    assert.deepEqual(code.corps.roles, ['serveuse'], 'tablette : poste serveuse par défaut');
+    const tab = (await t.appel('POST', '/liaison', { corps: { code: code.corps.code } })).corps;
+    assert.deepEqual(tab.appareil.roles, ['serveuse']);
+    assert.equal((await t.connecter(tab.jeton, t.idServeuse, PIN_SERVEUSE)).statut, 200);
+    const refus = await t.connecter(tab.jeton, t.idAdmin, PIN_ADMIN);
+    assert.equal(refus.statut, 403, 'le patron ne se connecte pas sur une tablette serveuse, même avec son code');
+    assert.match(refus.corps.erreur, /poste/);
+    const multi = await t.appel('POST', '/appareils/codes', { jeton: caisse.jeton, session, corps: { type: 'caisse', nom: 'Caisse', roles: ['caissier', 'admin', 'pirate'] } });
+    assert.deepEqual(multi.corps.roles, ['caissier', 'admin']);
+    const vide = await t.appel('POST', '/appareils/codes', { jeton: caisse.jeton, session, corps: { type: 'caisse', roles: [] } });
+    assert.equal(vide.statut, 400);
+    assert.deepEqual((await t.appel('GET', '/appareil', { jeton: tab.jeton })).corps.appareil.roles, ['serveuse']);
+    await t.pool.query('DELETE FROM essais_pin');
+  });
+
   test('appareil retiré : plus aucun accès', async () => {
     const session = (await t.connecter(caisse.jeton, t.idAdmin, PIN_ADMIN)).corps.session;
     const code = await t.appel('POST', '/appareils/codes', { jeton: caisse.jeton, session, corps: { type: 'tablette', nom: 'Tablette Terrasse' } });

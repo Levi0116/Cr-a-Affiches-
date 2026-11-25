@@ -63,8 +63,9 @@ await ecrireServeur(pool, id, [
 ]);
 await publierVersion(pool, cfg.version);
 const code = nouveauCode();
-await pool.query('INSERT INTO codes_liaison (code, restaurant_id, nom, type, admin, expire) VALUES (?, ?, ?, ?, 1, ?)', [
+await pool.query('INSERT INTO codes_liaison (code, restaurant_id, nom, type, admin, expire, roles) VALUES (?, ?, ?, ?, 1, ?, ?)', [
   code, id, `Téléphone de ${admin}`, 'telephone', new Date(Date.now() + DUREE_CODE_MIN * 60_000),
+ 'admin',
 ]);
 console.log(`\nRestaurant « ${nom} » créé (${id}).`);
 console.log(`Administrateur : ${admin}`);

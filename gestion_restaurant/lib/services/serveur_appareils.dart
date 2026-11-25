@@ -46,6 +46,10 @@ abstract class ServeurAppareils {
   /// Téléphone du gérant : droits administrateur permanents.
   bool get appareilAdmin;
 
+  /// Postes autorisés sur cet appareil (null = tous). L'accueil n'affiche
+  /// que ces comptes, et le serveur refuse les autres.
+  Set<Role>? get postes;
+
   /// Droits administrateur utilisables maintenant (session vérifiée en ligne
   /// ou téléphone du gérant).
   bool droitsAdmin(Employe? e);
@@ -57,8 +61,15 @@ abstract class ServeurAppareils {
   Future<void> modifierEmploye(String id, {String? nom, Role? role, bool? actif, String? pin});
   Future<void> supprimerEmploye(String id);
 
-  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false});
+  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false, Set<Role>? postes});
   Future<void> revoquer(String idAppareil);
+}
+
+/// Postes lus depuis le serveur ou le stockage (« serveuse,admin »).
+Set<Role>? lirePostes(Object? v) {
+  final liste = v is List ? v.map((e) => '$e') : (v is String ? v.split(',') : const <String>[]);
+  final r = {for (final x in liste) ?Role.values.asNameMap()[x.trim()]};
+  return r.isEmpty ? null : r;
 }
 
 String _texte(Object e) => e is ErreurApi ? e.message : '$e';
@@ -70,14 +81,19 @@ class ServeurApi implements ServeurAppareils {
   final BaseLocale base;
   @override
   final bool appareilAdmin;
+  @override
+  Set<Role>? postes;
   bool _sessionEnLigne = false;
-  ServeurApi({required this.api, required this.base, required this.appareilAdmin});
+  ServeurApi({required this.api, required this.base, required this.appareilAdmin, this.postes});
 
   @override
   bool droitsAdmin(Employe? e) => e?.role == Role.admin && (appareilAdmin || _sessionEnLigne);
 
   @override
   Future<Connexion> connecter(Employe e, String pin) async {
+    if (postes != null && !postes!.contains(e.role)) {
+      throw ErreurMetier('Ce compte ne peut pas se connecter sur cet appareil.');
+    }
     try {
       final r = await api.connexion(e.id, pin).timeout(const Duration(seconds: 10));
       api.session = r['session'] as String;
@@ -146,8 +162,9 @@ class ServeurApi implements ServeurAppareils {
   Future<void> supprimerEmploye(String id) => _admin(() => api.supprimerEmploye(id));
 
   @override
-  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false}) => _admin(() async {
-    final r = await api.creerCodeLiaison(type: type.name, nom: nom.trim(), admin: admin);
+  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false, Set<Role>? postes}) =>
+      _admin(() async {
+    final r = await api.creerCodeLiaison(type: type.name, nom: nom.trim(), admin: admin, roles: postes?.map((p) => p.name).toList());
     return CodeLiaison(code: r['code'] as String, expire: DateTime.parse(r['expire'] as String).toLocal());
   });
 
@@ -166,6 +183,9 @@ class ServeurDemo implements ServeurAppareils {
 
   @override
   bool get appareilAdmin => false;
+
+  @override
+  Set<Role>? get postes => null;
 
   @override
   bool droitsAdmin(Employe? e) => e?.role == Role.admin;
@@ -238,7 +258,7 @@ class ServeurDemo implements ServeurAppareils {
   }
 
   @override
-  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false}) async {
+  Future<CodeLiaison> creerCode({required String nom, required TypeAppareil type, bool admin = false, Set<Role>? postes}) async {
     if (nom.trim().isEmpty) throw ErreurMetier('Donnez un nom à l’appareil.');
     final r = Random.secure();
     final code = List.generate(8, (_) => _alphabet[r.nextInt(_alphabet.length)]).join();
@@ -247,6 +267,7 @@ class ServeurDemo implements ServeurAppareils {
       'nom': nom.trim(),
       'type': type.name,
       'admin': admin && type == TypeAppareil.telephone,
+      'roles': [...?postes?.map((p) => p.name)],
       'revoque': false,
       'lieLe': Timestamp.now(),
     });

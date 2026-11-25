@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app.dart';
 import '../../donnees/api.dart';
 import '../../donnees/base.dart';
 import '../../donnees/stockage.dart';
@@ -25,7 +26,8 @@ class _Liaison {
   final String nomAppareil;
   final String type;
   final bool admin;
-  const _Liaison(this.jeton, this.idRestaurant, this.idAppareil, this.nomAppareil, this.type, this.admin);
+  final String roles;
+  const _Liaison(this.jeton, this.idRestaurant, this.idAppareil, this.nomAppareil, this.type, this.admin, [this.roles = '']);
 }
 
 /// Démarrage de la PWA reliée au serveur Node.js :
@@ -74,7 +76,7 @@ class _RacineServeurState extends State<RacineServeur> {
       _api.base = Uri.parse(v['api']!);
     }
     if (v['jeton'] != null && v['restaurant'] != null) {
-      _liaison = _Liaison(v['jeton']!, v['restaurant']!, v['appareil'] ?? '', v['nomAppareil'] ?? '', v['type'] ?? 'tablette', v['admin'] == '1');
+      _liaison = _Liaison(v['jeton']!, v['restaurant']!, v['appareil'] ?? '', v['nomAppareil'] ?? '', v['type'] ?? 'tablette', v['admin'] == '1', v['roles'] ?? '');
       await _ouvrir();
     }
     if (mounted) setState(() => _chargement = false);
@@ -91,8 +93,17 @@ class _RacineServeurState extends State<RacineServeur> {
       'nomAppareil': a['nom'] as String,
       'type': a['type'] as String,
       'admin': a['admin'] == true ? '1' : '0',
+      'roles': (a['roles'] as List? ?? const []).join(','),
     });
-    _liaison = _Liaison(r['jeton'] as String, resto['id'] as String, a['id'] as String, a['nom'] as String, a['type'] as String, a['admin'] == true);
+    _liaison = _Liaison(
+      r['jeton'] as String,
+      resto['id'] as String,
+      a['id'] as String,
+      a['nom'] as String,
+      a['type'] as String,
+      a['admin'] == true,
+      (a['roles'] as List? ?? const []).join(','),
+    );
   }
 
   Future<void> _ouvrir() async {
@@ -101,7 +112,15 @@ class _RacineServeurState extends State<RacineServeur> {
     final base = BaseLocale(await Stockage.persistant('amani-donnees-${l.idRestaurant}'));
     await base.ouvrir();
     final db = RestoDb(fs: base, idRestaurant: l.idRestaurant, appareil: '${l.type}-${l.idAppareil.substring(0, 6)}');
-    final serveur = ServeurApi(api: _api, base: base, appareilAdmin: l.admin);
+    final serveur = ServeurApi(api: _api, base: base, appareilAdmin: l.admin, postes: lirePostes(l.roles));
+    // Postes à jour depuis le serveur (en arrière-plan ; hors ligne : ceux gardés sur l'appareil).
+    unawaited(
+      _api.etatAppareil().then((r) async {
+        final roles = ((r['appareil'] as Map?)?['roles'] as List? ?? const []).join(',');
+        serveur.postes = lirePostes(roles);
+        await _reglages?.ecrire('roles', roles);
+      }).catchError((_) {}),
+    );
     db.adminConfirme = () => serveur.appareilAdmin || _api.session != null;
     final synchro = Synchro(base: base, api: _api, idRestaurant: l.idRestaurant)..surAppareilRetire = _appareilRetire;
     synchro.etat.addListener(() {
@@ -139,20 +158,26 @@ class _RacineServeurState extends State<RacineServeur> {
 
   @override
   Widget build(BuildContext context) {
-    if (_chargement) return const _Demarrage();
+    if (_chargement) return const GestionRestaurantApp(key: ValueKey('demarrage'), accueil: _Demarrage());
     if (_db == null) {
-      return EcranLiaison(
-        lier: _lier,
-        onLie: () async {
-          setState(() => _chargement = true);
-          await _ouvrir();
-          if (mounted) setState(() => _chargement = false);
-        },
+      return GestionRestaurantApp(
+        key: const ValueKey('liaison'),
+        accueil: EcranLiaison(
+          lier: _lier,
+          onLie: () async {
+            setState(() => _chargement = true);
+            await _ouvrir();
+            if (mounted) setState(() => _chargement = false);
+          },
+        ),
       );
     }
+    // Le ProviderScope est AU-DESSUS de MaterialApp : tous les écrans et
+    // dialogues ouverts par la navigation ont accès aux données.
     return ProviderScope(
+      key: ValueKey(_db),
       overrides: [dbProvider.overrideWithValue(_db!), serveurAppareilsProvider.overrideWithValue(_serveur!)],
-      child: const Accueil(),
+      child: const GestionRestaurantApp(accueil: Accueil()),
     );
   }
 }

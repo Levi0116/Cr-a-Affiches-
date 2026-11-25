@@ -25,6 +25,17 @@ export async function migrer(pool) {
     .map((s) => s.replace(/^\s*--.*$/gm, '').trim())
     .filter(Boolean);
   for (const i of instructions) await pool.query(i);
+  // Évolutions de tables déjà créées (version 2.1 : poste des appareils).
+  await ajouterColonne(pool, 'appareils', 'roles', "VARCHAR(100) NOT NULL DEFAULT ''");
+  await ajouterColonne(pool, 'codes_liaison', 'roles', "VARCHAR(100) NOT NULL DEFAULT ''");
+}
+
+async function ajouterColonne(pool, table, colonne, definition) {
+  const [r] = await pool.query(
+    'SELECT COUNT(*) AS n FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?',
+    [table, colonne],
+  );
+  if (Number(r[0].n) === 0) await pool.query(`ALTER TABLE ${table} ADD COLUMN ${colonne} ${definition}`);
 }
 
 /** Exécute `fn` dans une transaction (validation ou annulation automatique). */

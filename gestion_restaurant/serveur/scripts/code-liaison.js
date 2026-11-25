@@ -18,8 +18,9 @@ if (!id) {
 }
 const pool = creerPool(lireConfig().mysql);
 const code = nouveauCode();
-await pool.query('INSERT INTO codes_liaison (code, restaurant_id, nom, type, admin, expire) VALUES (?, ?, ?, ?, 1, ?)', [
+await pool.query('INSERT INTO codes_liaison (code, restaurant_id, nom, type, admin, expire, roles) VALUES (?, ?, ?, ?, 1, ?, ?)', [
   code, id, arg('nom') ?? 'Téléphone du gérant', 'telephone', new Date(Date.now() + DUREE_CODE_MIN * 60_000),
+ 'admin',
 ]);
 console.log(`Code de liaison administrateur (valable ${DUREE_CODE_MIN} min) : ${code}`);
 await pool.end();
