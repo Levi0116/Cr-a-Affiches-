@@ -100,4 +100,4 @@ outils/        generer-sw.mjs (service worker de la PWA)
 web/           manifeste, icônes, page d'accueil de la PWA
 ```
 
-Documents : **[MISE_EN_SERVICE.md](MISE_EN_SERVICE.md)** (hébergement et installation), **[RECETTE.md](RECETTE.md)** (procès-verbal de recette), **[CHANGELOG.md](CHANGELOG.md)**.
+Documents : **[MISE_EN_SERVICE.md](MISE_EN_SERVICE.md)** (test local puis hébergement), **[HEBERGEMENT_LWS.md](HEBERGEMENT_LWS.md)** (hébergement chez LWS), **[RECETTE.md](RECETTE.md)** (procès-verbal de recette), **[CHANGELOG.md](CHANGELOG.md)**.

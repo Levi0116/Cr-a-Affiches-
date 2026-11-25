@@ -2,15 +2,18 @@
 # Installation complète d'un VPS Ubuntu 24.04 pour la plateforme
 # Restaurant Chez les Amani (à lancer UNE fois, en root) :
 #
-#   bash installer-serveur.sh chezamani.duckdns.org votre@email.com
+#   bash installer-serveur.sh chezamani.com,www.chezamani.com votre@email.com
+#
+# Plusieurs adresses possibles, séparées par des virgules (sans espace).
 #
 # Installe : pare-feu, protection contre les attaques par mot de passe,
 # mises à jour de sécurité automatiques, Node.js 22, MySQL 8, Nginx,
 # certificat HTTPS gratuit (Let's Encrypt), PM2, sauvegardes quotidiennes.
 set -euo pipefail
 
-DOMAINE="${1:?Usage : bash installer-serveur.sh mon-domaine.fr mon@email.com}"
+DOMAINES="${1:?Usage : bash installer-serveur.sh mon-domaine.fr[,www.mon-domaine.fr] mon@email.com}"
 EMAIL="${2:?Indiquez un e-mail (alertes d’expiration du certificat HTTPS)}"
+DOMAINE_PRINCIPAL="${DOMAINES%%,*}"
 DOSSIER=/srv/amani
 UTILISATEUR=amani
 
@@ -23,12 +26,21 @@ apt-get install -yq curl ca-certificates gnupg ufw fail2ban unattended-upgrades 
 echo "== 2/8 Pare-feu : seuls SSH, HTTP et HTTPS sont ouverts"
 # Certains VPS d'entrée de gamme (conteneurs LXC) n'autorisent pas ufw :
 # on continue alors, et on utilise le pare-feu du panneau de l'hébergeur.
-if ufw allow OpenSSH && ufw allow 'Nginx Full' && ufw --force enable; then
+# Port(s) SSH réellement utilisés (chez certains hébergeurs, ce n'est pas 22) :
+# on les ouvre AVANT d'activer le pare-feu, pour ne jamais perdre l'accès.
+PORTS_SSH=$(sshd -T 2>/dev/null | awk '/^port /{print $2}' | sort -u)
+PORTS_SSH=${PORTS_SSH:-22}
+ouvrir_ssh() { for p in $PORTS_SSH; do ufw allow "$p/tcp" || return 1; done; }
+echo "Port(s) SSH détecté(s) : $PORTS_SSH"
+if ouvrir_ssh && ufw allow 'Nginx Full' && ufw --force enable; then
   echo "Pare-feu actif."
 else
-  echo "ATTENTION : pare-feu ufw indisponible sur ce VPS. Activez le pare-feu de l'espace client (ports 22, 80, 443)."
+  echo "ATTENTION : pare-feu ufw indisponible sur ce VPS. Activez le pare-feu de l'espace client (ports SSH $PORTS_SSH, 80 et 443)."
 fi
-systemctl enable --now fail2ban || echo "ATTENTION : fail2ban indisponible sur ce VPS."
+# fail2ban surveille le(s) vrai(s) port(s) SSH.
+mkdir -p /etc/fail2ban/jail.d
+printf '[sshd]\nenabled = true\nport = %s\n' "$(echo $PORTS_SSH | tr ' ' ',')" > /etc/fail2ban/jail.d/amani.conf
+systemctl enable --now fail2ban && systemctl restart fail2ban || echo "ATTENTION : fail2ban indisponible sur ce VPS."
 dpkg-reconfigure -f noninteractive unattended-upgrades
 
 echo "== 3/8 Node.js 22 et PM2"
@@ -84,12 +96,12 @@ chown -R "$UTILISATEUR:$UTILISATEUR" "$DOSSIER"
 chmod 600 "$DOSSIER/serveur/.env"
 
 echo "== 7/8 Nginx (HTTPS) devant le serveur Node.js"
-sed "s/__DOMAINE__/${DOMAINE}/g" "$(dirname "$0")/nginx-amani.conf" > /etc/nginx/sites-available/amani
+sed "s/__DOMAINE__/${DOMAINES//,/ }/g" "$(dirname "$0")/nginx-amani.conf" > /etc/nginx/sites-available/amani
 ln -sf /etc/nginx/sites-available/amani /etc/nginx/sites-enabled/amani
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
-certbot --nginx -d "$DOMAINE" --non-interactive --agree-tos -m "$EMAIL" --redirect
+certbot --nginx -d "$DOMAINES" --non-interactive --agree-tos -m "$EMAIL" --redirect
 
 echo "== 8/8 Sauvegarde quotidienne de la base (3 h du matin, 14 jours gardés)"
 install -m 750 "$(dirname "$0")/sauvegarde.sh" /usr/local/bin/amani-sauvegarde
@@ -98,5 +110,5 @@ cat > /etc/cron.d/amani-sauvegarde <<CRON
 CRON
 
 echo
-echo "Serveur prêt. Étape suivante (depuis Windows) : envoyer l'application,"
-echo "puis lancer : bash $DOSSIER/serveur/deploiement/demarrer.sh"
+echo "Serveur prêt pour https://$DOMAINE_PRINCIPAL"
+echo "Étape suivante : bash $DOSSIER/serveur/deploiement/demarrer.sh"

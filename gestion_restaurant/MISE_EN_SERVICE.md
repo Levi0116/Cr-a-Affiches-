@@ -183,6 +183,8 @@ La liste complète se trouve dans **[RECETTE.md](RECETTE.md)**. Quand tout est c
 
 # PARTIE B — Déployer chez un hébergeur
 
+> **Vous avez pris LWS ?** Suivez directement le guide détaillé **[HEBERGEMENT_LWS.md](HEBERGEMENT_LWS.md)** : identification de l'offre, zone DNS, VPS ou cPanel, base de données, sauvegardes.
+
 ## B1. Choisir l'hébergement
 
 Deux façons d'héberger le serveur Node.js :
