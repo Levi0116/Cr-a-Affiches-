@@ -31,6 +31,8 @@ export function creerApp(pool, cfg) {
         },
       },
       crossOriginEmbedderPolicy: false,
+      // L'API peut être appelée depuis le domaine de l'application (voir CORS ci-dessous).
+      crossOriginResourcePolicy: { policy: cfg.origines.length ? 'cross-origin' : 'same-origin' },
       strictTransportSecurity: { maxAge: 31536000, includeSubDomains: true },
     }),
   );
@@ -38,6 +40,21 @@ export function creerApp(pool, cfg) {
   app.use(express.json({ limit: '2mb' }));
 
   const api = express.Router();
+  // CORS : seule l'application hébergée sur les domaines déclarés (ORIGINES) peut appeler l'API.
+  api.use((req, res, next) => {
+    const origine = req.get('origin');
+    if (origine && cfg.origines.includes(origine.replace(/\/$/, ''))) {
+      res.set({
+        'Access-Control-Allow-Origin': origine,
+        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session',
+        'Access-Control-Max-Age': '86400',
+        Vary: 'Origin',
+      });
+    }
+    if (req.method === 'OPTIONS') return res.status(origine && res.get('Access-Control-Allow-Origin') ? 204 : 403).end();
+    next();
+  });
   api.use(rateLimit({ windowMs: 60_000, limit: 600, standardHeaders: 'draft-8', legacyHeaders: false }));
   api.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');

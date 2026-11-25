@@ -20,7 +20,7 @@ const empreinte = crypto.createHash('sha256');
     const plein = path.join(dossier, nom);
     const rel = path.relative(racine, plein).split(path.sep).join('/');
     if (fs.statSync(plein).isDirectory()) parcourir(plein);
-    else if (!ignores.has(rel) && !rel.endsWith('.map') && !rel.endsWith('.symbols')) {
+    else if (!ignores.has(rel) && !nom.startsWith('.') && !rel.endsWith('.map') && !rel.endsWith('.symbols')) {
       fichiers.push(rel);
       empreinte.update(rel).update(fs.readFileSync(plein));
     }
@@ -48,6 +48,15 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   // L'API (données, synchronisation) ne passe jamais par le cache.
   if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/api/')) return;
+  // config.json (adresse du serveur) : réseau d'abord, copie locale si hors ligne.
+  if (url.pathname.endsWith('/config.json')) {
+    e.respondWith(fetch(e.request).then((r) => {
+      const copie = r.clone();
+      caches.open(VERSION).then((c) => c.put(new Request('config.json'), copie));
+      return r;
+    }).catch(() => caches.match('config.json', { ignoreSearch: true })));
+    return;
+  }
   // Pages : réseau d'abord (nouvelle version), copie locale si hors ligne.
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).catch(() => caches.match('./', { ignoreSearch: true })));

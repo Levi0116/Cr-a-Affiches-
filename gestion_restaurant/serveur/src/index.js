@@ -8,8 +8,9 @@ const pool = creerPool(cfg.mysql);
 await migrer(pool);
 await publierVersion(pool, cfg.version);
 const app = creerApp(pool, cfg);
-// HOTE=127.0.0.1 en production (derrière Nginx) ; 0.0.0.0 pour un test sur le Wi-Fi local.
-const hote = process.env.HOTE ?? '127.0.0.1';
+// HOTE=127.0.0.1 derrière Nginx ; 0.0.0.0 pour un test sur le Wi-Fi local ;
+// adresse fournie automatiquement chez alwaysdata.
+const hote = cfg.hote;
 const serveur = app.listen(cfg.port, hote, () => {
   console.log(`Serveur Amani prêt sur http://${hote === '0.0.0.0' ? 'localhost' : hote}:${cfg.port}`);
 });

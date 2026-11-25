@@ -16,7 +16,8 @@ class ErreurApi implements Exception {
 
 /// Client de l'API Node.js (même origine que la PWA par défaut).
 class Api {
-  final Uri base;
+  /// Adresse de l'API (modifiable après lecture de config.json).
+  Uri base;
   final http.Client _http;
   String? jetonAppareil;
   String? session;
@@ -28,7 +29,33 @@ class Api {
   /// Adresse du serveur : `--dart-define=API=https://…/api/`, sinon même origine.
   static Uri adresseParDefaut() {
     const configuree = String.fromEnvironment('API');
-    return configuree.isEmpty ? Uri.base.resolve('/api/') : Uri.parse(configuree.endsWith('/') ? configuree : '$configuree/');
+    return configuree.isEmpty ? Uri.base.resolve('/api/') : normaliser(configuree);
+  }
+
+  static Uri normaliser(String adresse) {
+    var a = adresse.trim();
+    if (!a.endsWith('/')) a = '$a/';
+    if (!a.endsWith('api/')) a = '${a}api/';
+    return Uri.parse(a);
+  }
+
+  /// Lit `config.json` posé à côté de l'application : `{"api": "https://…/api/"}`.
+  /// Permet d'héberger l'application et le serveur à deux adresses différentes
+  /// (ex. application chez LWS, serveur chez alwaysdata) sans reconstruire.
+  /// Renvoie null si le fichier est absent ou illisible (ex. hors ligne).
+  static Future<Uri?> lireConfiguration({http.Client? client}) async {
+    try {
+      final r = await (client ?? http.Client())
+          .get(Uri.base.resolve('config.json').replace(queryParameters: {'v': '${DateTime.now().millisecondsSinceEpoch}'}))
+          .timeout(const Duration(seconds: 6));
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(utf8.decode(r.bodyBytes));
+      final a = j is Map ? j['api'] : null;
+      if (a is! String || a.trim().isEmpty || a.contains('VOTRE-COMPTE')) return null;
+      return normaliser(a);
+    } catch (_) {
+      return null;
+    }
   }
 
   Map<String, String> get _entetes => {

@@ -49,3 +49,4 @@ app.*.map.json
 
 # Brouillon abandonné (version PHP du serveur), non suivi
 serveur-php/
+dist/

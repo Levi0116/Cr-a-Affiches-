@@ -11,6 +11,7 @@
     "migrer": "node scripts/migrer.js",
     "creer-restaurant": "node scripts/creer-restaurant.js",
     "code-liaison": "node scripts/code-liaison.js",
+    "configurer": "node scripts/configurer.js",
     "test": "node --test --test-concurrency=1 test/serveur.test.js"
   },
   "dependencies": {

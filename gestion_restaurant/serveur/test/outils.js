@@ -15,6 +15,7 @@ export const cfg = {
   },
   secret: 'secret-de-test-suffisamment-long-pour-hs256-0123456789',
   dureeSessionH: 12,
+  origines: ['https://restaurant-chez-amani.com'],
   dossierPwa: '/inexistant',
   version: { derniere: '2.0.0', minimale: '2.0.0', notes: '' },
 };
@@ -46,17 +47,18 @@ export async function demarrer() {
   });
   const base = `http://127.0.0.1:${serveur.address().port}/api`;
 
-  async function appel(methode, chemin, { corps, jeton, session } = {}) {
+  async function appel(methode, chemin, { corps, jeton, session, entetes = {} } = {}) {
     const r = await fetch(base + chemin, {
       method: methode,
       headers: {
+        ...entetes,
         'content-type': 'application/json',
         ...(jeton ? { authorization: `Appareil ${jeton}` } : {}),
         ...(session ? { 'x-session': session } : {}),
       },
       body: corps ? JSON.stringify(corps) : undefined,
     });
-    return { statut: r.status, corps: await r.json().catch(() => null) };
+    return { statut: r.status, entetes: r.headers, corps: await r.json().catch(() => null) };
   }
 
   async function lier({ type = 'tablette', admin = false } = {}) {

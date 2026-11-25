@@ -183,6 +183,18 @@ describe('API', () => {
     assert.ok(r.corps.rev > rev);
   });
 
+  test('CORS : seul le domaine de l’application peut appeler l’API', async () => {
+    const ok = await t.appel('OPTIONS', '/sante', { entetes: { origin: 'https://restaurant-chez-amani.com', 'access-control-request-method': 'POST' } });
+    assert.equal(ok.statut, 204);
+    assert.equal(ok.entetes.get('access-control-allow-origin'), 'https://restaurant-chez-amani.com');
+    assert.match(ok.entetes.get('access-control-allow-headers'), /X-Session/);
+    const pirate = await t.appel('OPTIONS', '/sante', { entetes: { origin: 'https://site-pirate.example', 'access-control-request-method': 'POST' } });
+    assert.equal(pirate.statut, 403);
+    assert.equal(pirate.entetes.get('access-control-allow-origin'), null);
+    const lecture = await t.appel('GET', '/sante', { entetes: { origin: 'https://site-pirate.example' } });
+    assert.equal(lecture.entetes.get('access-control-allow-origin'), null);
+  });
+
   test('appareil retiré : plus aucun accès', async () => {
     const session = (await t.connecter(caisse.jeton, t.idAdmin, PIN_ADMIN)).corps.session;
     const code = await t.appel('POST', '/appareils/codes', { jeton: caisse.jeton, session, corps: { type: 'tablette', nom: 'Tablette Terrasse' } });

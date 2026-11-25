@@ -64,6 +64,15 @@ class _RacineServeurState extends State<RacineServeur> {
   Future<void> _demarrer() async {
     final r = _reglages = await Stockage.persistant('amani-reglages');
     final v = await r.toutLire();
+    // Adresse du serveur : config.json (si présent), sinon la dernière connue
+    // (démarrage hors ligne), sinon la même adresse que l'application.
+    final configuree = await Api.lireConfiguration();
+    if (configuree != null) {
+      _api.base = configuree;
+      await r.ecrire('api', configuree.toString());
+    } else if (v['api'] != null) {
+      _api.base = Uri.parse(v['api']!);
+    }
     if (v['jeton'] != null && v['restaurant'] != null) {
       _liaison = _Liaison(v['jeton']!, v['restaurant']!, v['appareil'] ?? '', v['nomAppareil'] ?? '', v['type'] ?? 'tablette', v['admin'] == '1');
       await _ouvrir();
